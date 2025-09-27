@@ -46,7 +46,7 @@ pomelo! {
     %type stmt_list Vec<Node>;
     %type stmt Node;
     %type expr Node;
-    %type var String;
+    %type var Vec<String>;
 
 
     %left KwOr;
@@ -84,7 +84,8 @@ pomelo! {
     expr ::= KwNot expr(e)       { Node::UnOp( UnOp::Not, Box::new(e) ) };
     expr ::= Sub expr(e) [KwNot] { Node::UnOp( UnOp::Neg, Box::new(e) ) };
 
-    var ::= Name;
+    var ::= var(mut v) Period Name(n) { v.push(n); v };
+    var ::= Name(n) { vec![n] };
 
     root ::= NewLine { Node::Dummy };
     root ::= Indent { Node::Dummy };

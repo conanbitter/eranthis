@@ -4,7 +4,7 @@ pub enum Node {
     FloatLiteral(f64),
     BinOp(BinOp, Box<Node>, Box<Node>),
     UnOp(UnOp, Box<Node>),
-    Var(String),
+    Var(Vec<String>),
     Dummy,
     DummyVec(Vec<Node>),
 }
