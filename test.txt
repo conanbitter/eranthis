@@ -9,6 +9,7 @@ t = 0xFF
 s = "String \"literal\""
 a =b+d
 c/=f%(h*f)
+error !2 r
 r=a!=b and c>=d
     if then
     test

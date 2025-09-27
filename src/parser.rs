@@ -1,12 +1,13 @@
 use pomelo::pomelo;
 
 pomelo! {
-    %token #[derive(Clone,Debug)] pub enum Token {};
+    %token #[derive(Clone,Debug,PartialEq)] pub enum Token {};
 
     %type Name String;
     %type Str String;
     %type Int i64;
     %type Float f64;
+    %type Eof;
 
     root ::= NewLine;
     root ::= Indent;

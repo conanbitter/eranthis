@@ -10,7 +10,7 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<()> {
     let source = fs::read_to_string(source_file)?;
 
     let mut lex = Lexer::new(&source);
-    lexer::debug_dump(&mut lex);
+    lexer::debug_dump(&mut lex)?;
     Ok(())
 }
 

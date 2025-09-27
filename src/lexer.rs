@@ -26,9 +26,6 @@ static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
     "while" => Token::KwWhile,
 };
 
-// =  >  <  +  -  *  /  %     ( ) [ ] , . :
-// == >= <= += -= *= /= %= !=
-
 static SINGLE_CHAR_OPS: phf::Map<char, Token> = phf_map! {
     '=' => Token::Assign,
     '>' => Token::Greater,
@@ -58,6 +55,19 @@ static DOUBLE_CHAR_OPS: phf::Map<char, Token> = phf_map! {
     '%' => Token::ModAssign,
 };
 
+#[derive(Clone, Copy)]
+pub struct FilePos {
+    pub line: u32,
+    pub col: u32,
+}
+
+#[derive(Clone)]
+pub struct LexerResult {
+    pub token: Token,
+    pub pos: FilePos,
+    pub indent: u32,
+}
+
 pub struct Lexer<'a> {
     data: Chars<'a>,
     cur_char: Option<char>,
@@ -80,17 +90,22 @@ impl<'a> Lexer<'a> {
         result
     }
 
-    pub fn next(&mut self) -> Option<(Token, u32, u32, u32)> {
+    pub fn next(&mut self) -> anyhow::Result<LexerResult> {
         self.skip_spaces();
         if self.cur_char == Some('#') {
             self.skip_comments();
         }
 
-        let line = self.line;
-        let col = self.col - 1;
+        let result = LexerResult {
+            token: Token::Eof,
+            pos: FilePos {
+                line: self.line,
+                col: self.col - 1,
+            },
+            indent: self.indent,
+        };
 
         if self.cur_char == Some('\n') {
-            let old_indent = self.indent;
             while self.cur_char == Some('\n') {
                 self.forward();
                 self.indent = self.skip_spaces();
@@ -98,25 +113,45 @@ impl<'a> Lexer<'a> {
                     self.skip_comments();
                 }
             }
-            Some((Token::NewLine, line, col, old_indent))
+            Ok(LexerResult {
+                token: Token::NewLine,
+                ..result
+            })
         } else if let Some(is_char) = self.cur_char {
             // Names and keywords
             if is_char.is_ascii_alphabetic() {
-                Some((self.read_name(), line, col, self.indent))
+                Ok(LexerResult {
+                    token: self.read_name(),
+                    ..result
+                })
             // Number literals (int and float)
             } else if is_char.is_ascii_digit() {
-                Some((self.read_number(), line, col, self.indent))
+                Ok(LexerResult {
+                    token: self.read_number(),
+                    ..result
+                })
             // String literals
             } else if is_char == '"' {
-                Some((Token::Str(self.read_str()), line, col, self.indent))
+                Ok(LexerResult {
+                    token: Token::Str(self.read_str()),
+                    ..result
+                })
             // Not equal operator (special case)
             } else if is_char == '!' {
                 self.forward();
                 if self.cur_char == Some('=') {
                     self.forward();
-                    Some((Token::NotEq, line, col, self.indent))
+                    Ok(LexerResult {
+                        token: Token::NotEq,
+                        ..result
+                    })
                 } else {
-                    None
+                    anyhow::bail!(
+                        "[Ln {}, Col {}] ERROR: Unrecognized symbol \"{}\"",
+                        result.pos.line,
+                        result.pos.col,
+                        is_char
+                    );
                 }
             // Operators
             } else if SINGLE_CHAR_OPS.contains_key(&is_char) {
@@ -126,15 +161,26 @@ impl<'a> Lexer<'a> {
                     && let Some(token) = DOUBLE_CHAR_OPS.get(&first).cloned()
                 {
                     self.forward();
-                    Some((token, line, col, self.indent))
+                    Ok(LexerResult { token, ..result })
                 } else {
-                    Some((SINGLE_CHAR_OPS.get(&first).cloned().unwrap(), line, col, self.indent))
+                    Ok(LexerResult {
+                        token: SINGLE_CHAR_OPS.get(&first).cloned().unwrap(),
+                        ..result
+                    })
                 }
             } else {
-                None
+                anyhow::bail!(
+                    "[Ln {}, Col {}] ERROR: Unrecognized symbol \"{}\"",
+                    result.pos.line,
+                    result.pos.col,
+                    is_char
+                );
             }
         } else {
-            None
+            Ok(LexerResult {
+                token: Token::Eof,
+                ..result
+            })
         }
     }
 
@@ -261,24 +307,31 @@ impl<'a> Lexer<'a> {
     }
 }
 
-fn print_token(token: Token, line: u32, col: u32, indent: u32) {
-    println!("{:3} {:3} {:2}  {:?}", line, col, indent, token);
+fn print_token(token: Token, pos: FilePos, indent: u32) {
+    println!("{:3} {:3} {:2}  {:?}", pos.line, pos.col, indent, token);
 }
 
-pub fn debug_dump(lexer: &mut Lexer) {
+pub fn debug_dump(lexer: &mut Lexer) -> anyhow::Result<()> {
     let mut indent_stack = VecDeque::new();
     indent_stack.push_front(0u32);
 
-    while let Some((token, line, col, indent)) = lexer.next() {
+    loop {
+        let LexerResult { token, pos, indent } = lexer.next()?;
+        if token == Token::Eof {
+            break;
+        }
+
         if indent > *indent_stack.front().unwrap() {
             indent_stack.push_front(indent);
-            print_token(Token::Indent, line, col, indent);
+            print_token(Token::Indent, pos, indent);
         } else {
             while indent < *indent_stack.front().unwrap() {
-                print_token(Token::Dedent, line, col, indent);
+                print_token(Token::Dedent, pos, indent);
                 indent_stack.pop_front();
             }
         }
-        print_token(token, line, col, indent);
+        print_token(token, pos, indent);
     }
+
+    Ok(())
 }
