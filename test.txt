@@ -1,15 +1,15 @@
     test test
 test
-t = 123
+t = 123 sd
 t = 34.65
 t = 0.65
 t = 23e-2
 t = 23.4e1
 t = 0xFF
-s = "String \"literal\""
+s = fdf "String \"literal\"" gf
 a =b+d
 c/=f%(h*f)
-error !2 r
+er 0xa ror !=2 r
 r=a!=b and c>=d
     if then
     test

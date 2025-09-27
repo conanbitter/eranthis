@@ -121,13 +121,13 @@ impl<'a> Lexer<'a> {
             // Names and keywords
             if is_char.is_ascii_alphabetic() {
                 Ok(LexerResult {
-                    token: self.read_name(),
+                    token: self.read_name()?,
                     ..result
                 })
             // Number literals (int and float)
             } else if is_char.is_ascii_digit() {
                 Ok(LexerResult {
-                    token: self.read_number(),
+                    token: self.read_number()?,
                     ..result
                 })
             // String literals
@@ -194,6 +194,26 @@ impl<'a> Lexer<'a> {
         self.cur_char = self.data.next();
     }
 
+    fn is_separator(&self) -> bool {
+        if let Some(is_char) = self.cur_char {
+            is_char.is_whitespace() || is_char == '!' || SINGLE_CHAR_OPS.contains_key(&is_char)
+        } else {
+            true
+        }
+    }
+
+    fn expext_separator(&self) -> anyhow::Result<()> {
+        if !self.is_separator() {
+            anyhow::bail!(
+                "[Ln {}, Col {}] ERROR: Expecting space, operator or end of line before {:?}",
+                self.line,
+                self.col - 1,
+                self.cur_char.unwrap_or(' ')
+            );
+        }
+        Ok(())
+    }
+
     fn skip_spaces(&mut self) -> u32 {
         let mut count = 0;
         while let Some(is_char) = self.cur_char
@@ -213,7 +233,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn read_name(&mut self) -> Token {
+    fn read_name(&mut self) -> anyhow::Result<Token> {
         let mut result = String::new();
         while let Some(is_char) = self.cur_char
             && (is_char.is_ascii_alphanumeric() || is_char == '_')
@@ -222,9 +242,11 @@ impl<'a> Lexer<'a> {
             self.forward();
         }
         if let Some(token) = KEYWORDS.get(&result).cloned() {
-            token
+            self.expext_separator()?;
+            Ok(token)
         } else {
-            Token::Name(result)
+            self.expext_separator()?;
+            Ok(Token::Name(result))
         }
     }
 
@@ -239,7 +261,7 @@ impl<'a> Lexer<'a> {
         (result.parse().unwrap_or(0), result.len())
     }
 
-    fn read_hex(&mut self) -> i64 {
+    fn read_hex(&mut self) -> anyhow::Result<i64> {
         let mut result = String::new();
         while let Some(is_char) = self.cur_char
             && is_char.is_ascii_hexdigit()
@@ -247,15 +269,17 @@ impl<'a> Lexer<'a> {
             result.push(is_char);
             self.forward();
         }
-        i64::from_str_radix(&result, 16).unwrap()
+        self.expext_separator()?;
+        i64::from_str_radix(&result, 16)
+            .map_err(|_| anyhow::format_err!("[Ln {}, Col {}] ERROR: Can't parse HEX value", self.line, self.col - 1))
     }
 
-    fn read_number(&mut self) -> Token {
+    fn read_number(&mut self) -> anyhow::Result<Token> {
         if self.cur_char == Some('0') {
             self.forward();
             if self.cur_char == Some('x') || self.cur_char == Some('X') {
                 self.forward();
-                return Token::Int(self.read_hex());
+                return Ok(Token::Int(self.read_hex()?));
             }
         }
         let integer = self.read_int().0;
@@ -274,11 +298,16 @@ impl<'a> Lexer<'a> {
                 self.read_int().0
             };
 
-            Token::Float((integer as f64 + decimal.unwrap_or(0.0)) * 10f64.powi(exponent as i32))
+            self.expext_separator()?;
+            Ok(Token::Float(
+                (integer as f64 + decimal.unwrap_or(0.0)) * 10f64.powi(exponent as i32),
+            ))
         } else if let Some(dm_part) = decimal {
-            Token::Float(integer as f64 + dm_part)
+            self.expext_separator()?;
+            Ok(Token::Float(integer as f64 + dm_part))
         } else {
-            Token::Int(integer)
+            self.expext_separator()?;
+            Ok(Token::Int(integer))
         }
     }
 
@@ -304,6 +333,7 @@ impl<'a> Lexer<'a> {
         }
         if self.cur_char == Some('"') {
             self.forward();
+            self.expext_separator()?;
             Ok(result)
         } else if let Some(is_char) = self.cur_char
             && is_char != '\n'
