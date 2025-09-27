@@ -6,6 +6,7 @@ t = 0.65
 t = 23e-2
 t = 23.4e1
 t = 0xFF
+s = "String \"literal\""
 a =b+d
 c/=f%(h*f)
 r=a!=b and c>=d
