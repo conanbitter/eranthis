@@ -1,11 +1,10 @@
-use std::str::Chars;
+use std::{collections::VecDeque, str::Chars};
 
 use crate::parser::Token;
 
 pub struct Lexer<'a> {
     data: Chars<'a>,
-    cur_char: char,
-    eof: bool,
+    cur_char: Option<char>,
     line: u32,
     col: u32,
     indent: u32,
@@ -13,18 +12,57 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a str) -> Lexer<'a> {
-        let result = Lexer {
+        let mut result = Lexer {
             data: source.chars(),
-            cur_char: '\n',
-            eof: false,
+            cur_char: None,
             line: 1,
             col: 1,
             indent: 0,
         };
+        result.forward();
+        result.indent = result.skip_spaces();
         result
     }
 
     pub fn next(&mut self) -> Option<(Token, u32, u32, u32)> {
+        self.skip_spaces();
+        if self.cur_char == Some('#') {
+            self.skip_comments();
+        }
+
+        let line = self.line;
+        let col = self.col - 1;
+
+        if self.cur_char == Some('\n') {
+            let old_indent = self.indent;
+            while self.cur_char == Some('\n') {
+                self.forward();
+                self.indent = self.skip_spaces();
+                if self.cur_char == Some('#') {
+                    self.skip_comments();
+                }
+            }
+            Some((Token::NewLine, line, col, old_indent))
+        } else if let Some(is_char) = self.cur_char {
+            match is_char {
+                _ => {
+                    if is_char.is_ascii_alphabetic() {
+                        let name = self.read_name();
+                        if name == "test" {
+                            Some((Token::KwTest, line, col, self.indent))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+            }
+        } else {
+            None
+        }
+
+        /*
         self.skip_spaces();
         if self.eof {
             return None;
@@ -54,55 +92,68 @@ impl<'a> Lexer<'a> {
                 }
             }
         }
+        */
     }
 
     fn forward(&mut self) {
-        if let Some(next_char) = self.data.next() {
-            self.cur_char = next_char;
-            if next_char == '\n' {
-                self.line += 1;
-                self.col = 1;
-            } else {
-                self.col += 1;
-            }
+        self.cur_char = self.data.next();
+        if self.cur_char == Some('\n') {
+            self.line += 1;
+            self.col = 1;
         } else {
-            self.eof = true;
+            self.col += 1;
         }
     }
 
-    fn skip_spaces(&mut self) {
-        let mut new_line = false;
-        let mut indent: u32 = 0;
-        while !self.eof && self.cur_char.is_whitespace() {
-            if new_line {
-                if self.cur_char == '\n' {
-                    indent = 0;
-                } else {
-                    indent += 1;
-                }
-            } else if self.cur_char == '\n' {
-                indent = 0;
-                new_line = true;
-            }
+    fn skip_spaces(&mut self) -> u32 {
+        let mut count = 0;
+        while let Some(is_char) = self.cur_char
+            && is_char.is_whitespace()
+            && is_char != '\n'
+        {
             self.forward();
+            count += 1;
         }
-        if new_line {
-            self.indent = indent;
-        }
+        count
     }
 
     fn skip_comments(&mut self) {
-        while !self.eof && self.cur_char != '\n' {
+        self.forward();
+        while self.cur_char != None && self.cur_char != Some('\n') {
             self.forward();
         }
     }
 
     fn read_name(&mut self) -> String {
         let mut result = String::new();
-        while !self.eof && (self.cur_char.is_ascii_alphanumeric() || self.cur_char == '_') {
-            result.push(self.cur_char);
+        while let Some(is_char) = self.cur_char
+            && (is_char.is_ascii_alphanumeric() || is_char == '_')
+        {
+            result.push(is_char);
             self.forward();
         }
         result
+    }
+}
+
+fn print_token(token: Token, line: u32, col: u32, indent: u32) {
+    println!("{:3} {:3} {:2}  {:?}", line, col, indent, token);
+}
+
+pub fn debug_dump(lexer: &mut Lexer) {
+    let mut indent_stack = VecDeque::new();
+    indent_stack.push_front(0u32);
+
+    while let Some((token, line, col, indent)) = lexer.next() {
+        if indent > *indent_stack.front().unwrap() {
+            indent_stack.push_front(indent);
+            print_token(Token::Indent, line, col, indent);
+        } else {
+            while indent < *indent_stack.front().unwrap() {
+                print_token(Token::Dedent, line, col, indent);
+                indent_stack.pop_front();
+            }
+        }
+        print_token(token, line, col, indent);
     }
 }
