@@ -133,7 +133,7 @@ impl<'a> Lexer<'a> {
             // String literals
             } else if is_char == '"' {
                 Ok(LexerResult {
-                    token: Token::Str(self.read_str()),
+                    token: Token::Str(self.read_str()?),
                     ..result
                 })
             // Not equal operator (special case)
@@ -147,7 +147,7 @@ impl<'a> Lexer<'a> {
                     })
                 } else {
                     anyhow::bail!(
-                        "[Ln {}, Col {}] ERROR: Unrecognized symbol \"{}\"",
+                        "[Ln {}, Col {}] ERROR: Unexpected symbol {:?}",
                         result.pos.line,
                         result.pos.col,
                         is_char
@@ -170,7 +170,7 @@ impl<'a> Lexer<'a> {
                 }
             } else {
                 anyhow::bail!(
-                    "[Ln {}, Col {}] ERROR: Unrecognized symbol \"{}\"",
+                    "[Ln {}, Col {}] ERROR: Unexpected symbol {:?}",
                     result.pos.line,
                     result.pos.col,
                     is_char
@@ -282,11 +282,13 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn read_str(&mut self) -> String {
+    fn read_str(&mut self) -> anyhow::Result<String> {
         self.forward();
         let mut escaping = false;
         let mut result = String::new();
-        while let Some(is_char) = self.cur_char {
+        while let Some(is_char) = self.cur_char
+            && !is_char.is_control()
+        {
             if escaping {
                 result.push(is_char);
                 self.forward();
@@ -302,8 +304,24 @@ impl<'a> Lexer<'a> {
         }
         if self.cur_char == Some('"') {
             self.forward();
+            Ok(result)
+        } else if let Some(is_char) = self.cur_char
+            && is_char != '\n'
+            && is_char != '\r'
+        {
+            anyhow::bail!(
+                "[Ln {}, Col {}] ERROR: Unexpected symbol {:?}",
+                self.line,
+                self.col - 1,
+                is_char,
+            );
+        } else {
+            anyhow::bail!(
+                "[Ln {}, Col {}] ERROR: Unexpected end of string",
+                self.line,
+                self.col - 1
+            );
         }
-        result
     }
 }
 
