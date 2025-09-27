@@ -2,7 +2,7 @@ use pomelo::pomelo;
 
 pomelo! {
      %include {
-        use crate::ast::Node;
+        use crate::ast::*;
         use crate::lexer::FilePos;
     }
 
@@ -15,13 +15,41 @@ pomelo! {
     %type Eof;
 
     %type root Node;
+    %type stmt_list Vec<Node>;
+    %type stmt Node;
     %type expr Node;
 
-    root ::= expr;
+
+    %left Or;
+    %left And;
+    %nonassoc Eq NotEq;
+    %nonassoc Less LessEq Greater GreaterEq;
+    %left Add Sub;
+    %left Mul Div Mod;
+    %right Not;
+
+    root ::= stmt_list(sl) { Node::DummyVec(sl) };
+
+    stmt_list ::= stmt_list(mut sl) stmt(s) { sl.push(s); sl };
+    stmt_list ::= stmt(s) { vec![s] };
+
+    stmt ::= expr;
 
     expr ::= Int(v) { Node::IntLiteral(v) };
     expr ::= Float(v) { Node::FloatLiteral(v) };
-
+    expr ::= expr(l) Add expr(r) { Node::BinOp(BinOp::Add,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) Sub expr(r) { Node::BinOp(BinOp::Sub,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) Mul expr(r) { Node::BinOp(BinOp::Mul,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) Div expr(r) { Node::BinOp(BinOp::Div,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) Mod expr(r) { Node::BinOp(BinOp::Mod,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) Less expr(r) { Node::BinOp(BinOp::Less,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) LessEq expr(r) { Node::BinOp(BinOp::LessEq,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) Greater expr(r) { Node::BinOp(BinOp::Greater,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) GreaterEq expr(r) { Node::BinOp(BinOp::GreaterEq,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) Eq expr(r) { Node::BinOp(BinOp::Eq,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) NotEq expr(r) { Node::BinOp(BinOp::NotEq,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) And expr(r) { Node::BinOp(BinOp::And,Box::new(l),Box::new(r)) };
+    expr ::= expr(l) Or expr(r) { Node::BinOp(BinOp::Or,Box::new(l),Box::new(r)) };
 
     root ::= NewLine { Node::Dummy };
     root ::= Indent { Node::Dummy };
@@ -50,7 +78,7 @@ pomelo! {
     root ::= KwWhile { Node::Dummy };
 
     root ::= Assign { Node::Dummy };
-    root ::= Add { Node::Dummy };
+    //root ::= Add { Node::Dummy };
     root ::= AddAssign { Node::Dummy };
     root ::= Sub { Node::Dummy };
     root ::= SubAssign { Node::Dummy };
