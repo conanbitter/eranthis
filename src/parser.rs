@@ -4,11 +4,17 @@ pomelo! {
     %token #[derive(Clone,Debug)] pub enum Token {};
 
     %type Name String;
+    %type Str String;
+    %type Int i64;
+    %type Float f64;
 
     root ::= NewLine;
     root ::= Indent;
     root ::= Dedent;
     root ::= Name;
+    root ::= Int;
+    root ::= Float;
+    root ::= Str;
 
     root ::= KwAnd;
     root ::= KwConst;
@@ -48,7 +54,7 @@ pomelo! {
     root ::= Eq;
     root ::= NotEq;
     root ::= Comma;
-    root ::= Preriod;
+    root ::= Period;
     root ::= Colon;
     root ::= LParen;
     root ::= RParen;

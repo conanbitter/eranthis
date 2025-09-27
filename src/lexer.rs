@@ -43,7 +43,7 @@ static SINGLE_CHAR_OPS: phf::Map<char, Token> = phf_map! {
     '[' => Token::LSqBracket,
     ']' => Token::RSqBracket,
     ',' => Token::Comma,
-    '.' => Token::Preriod,
+    '.' => Token::Period,
     ':' => Token::Colon,
 };
 
@@ -102,6 +102,8 @@ impl<'a> Lexer<'a> {
         } else if let Some(is_char) = self.cur_char {
             if is_char.is_ascii_alphabetic() {
                 Some((self.read_name(), line, col, self.indent))
+            } else if is_char.is_ascii_digit() {
+                Some((self.read_number(), line, col, self.indent))
             } else if is_char == '!' {
                 self.forward();
                 if self.cur_char == Some('=') {
@@ -127,38 +129,6 @@ impl<'a> Lexer<'a> {
         } else {
             None
         }
-
-        /*
-        self.skip_spaces();
-        if self.eof {
-            return None;
-        }
-        while self.cur_char == '#' {
-            self.skip_comments();
-            self.skip_spaces();
-            if self.eof {
-                return None;
-            }
-        }
-
-        let line = self.line;
-        let col = self.col - 1;
-
-        match self.cur_char {
-            _ => {
-                if self.cur_char.is_ascii_alphabetic() {
-                    let name = self.read_name();
-                    if name == "test" {
-                        Some((Token::KwTest, line, col, self.indent))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-        }
-        */
     }
 
     fn forward(&mut self) {
@@ -202,6 +172,53 @@ impl<'a> Lexer<'a> {
             token
         } else {
             Token::Name(result)
+        }
+    }
+
+    fn read_int(&mut self) -> (i64, usize) {
+        let mut result = String::new();
+        while let Some(is_char) = self.cur_char
+            && is_char.is_ascii_digit()
+        {
+            result.push(is_char);
+            self.forward();
+        }
+        (result.parse().unwrap_or(0), result.len())
+    }
+
+    fn read_hex(&mut self) -> i64 {
+        0
+    }
+
+    fn read_number(&mut self) -> Token {
+        if self.cur_char == Some('0') {
+            self.forward();
+            if self.cur_char == Some('x') || self.cur_char == Some('X') {
+                self.forward();
+                return Token::Int(self.read_hex());
+            }
+        }
+        let integer = self.read_int().0;
+        let mut decimal: Option<f64> = None;
+        if self.cur_char == Some('.') {
+            self.forward();
+            let (dec_number, length) = self.read_int();
+            decimal = Some(dec_number as f64 / 10f64.powi(length as i32));
+        }
+        if self.cur_char == Some('e') || self.cur_char == Some('E') {
+            self.forward();
+            let exponent = if self.cur_char == Some('-') {
+                self.forward();
+                -self.read_int().0
+            } else {
+                self.read_int().0
+            };
+
+            Token::Float((integer as f64 + decimal.unwrap_or(0.0)) * 10f64.powi(exponent as i32))
+        } else if let Some(dm_part) = decimal {
+            Token::Float(integer as f64 + dm_part)
+        } else {
+            Token::Int(integer)
         }
     }
 }
