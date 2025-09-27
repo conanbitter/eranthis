@@ -1,5 +1,8 @@
     test test
 test
+a =b+d
+c/=f%(h*f)
+r=a!=b and c>=d
     if then
     test
 test

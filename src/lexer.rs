@@ -1,10 +1,11 @@
-use std::{collections::VecDeque, str::Chars};
+use std::{char, collections::VecDeque, str::Chars};
 
 use phf_macros::phf_map;
 
 use crate::parser::Token;
 
 static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
+    "and" => Token::KwAnd,
     "const" => Token::KwConst,
     "elif" => Token::KwElif,
     "else" => Token::KwElse,
@@ -12,6 +13,8 @@ static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
     "func" => Token::KwFunc,
     "if" => Token::KwIf,
     "in" => Token::KwIn,
+    "not" => Token::KwNot,
+    "or" => Token::KwOr,
     "ref" => Token::KwRef,
     "return" => Token::KwReturn,
     "step" => Token::KwStep,
@@ -21,6 +24,38 @@ static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
     "type" => Token::KwType,
     "var" => Token::KwVar,
     "while" => Token::KwWhile,
+};
+
+// =  >  <  +  -  *  /  %     ( ) [ ] , . :
+// == >= <= += -= *= /= %= !=
+
+static SINGLE_CHAR_OPS: phf::Map<char, Token> = phf_map! {
+    '=' => Token::Assign,
+    '>' => Token::Greater,
+    '<' => Token::Less,
+    '+' => Token::Add,
+    '-' => Token::Sub,
+    '*' => Token::Mul,
+    '/' => Token::Div,
+    '%' => Token::Mod,
+    '(' => Token::LParen,
+    ')' => Token::RParen,
+    '[' => Token::LSqBracket,
+    ']' => Token::RSqBracket,
+    ',' => Token::Comma,
+    '.' => Token::Preriod,
+    ':' => Token::Colon,
+};
+
+static DOUBLE_CHAR_OPS: phf::Map<char, Token> = phf_map! {
+    '=' => Token::Eq,
+    '>' => Token::GreaterOrEq,
+    '<' => Token::LessOrEq,
+    '+' => Token::AddAssign,
+    '-' => Token::SubAssign,
+    '*' => Token::MulAssign,
+    '/' => Token::DivAssign,
+    '%' => Token::ModAssign,
 };
 
 pub struct Lexer<'a> {
@@ -65,14 +100,29 @@ impl<'a> Lexer<'a> {
             }
             Some((Token::NewLine, line, col, old_indent))
         } else if let Some(is_char) = self.cur_char {
-            match is_char {
-                _ => {
-                    if is_char.is_ascii_alphabetic() {
-                        Some((self.read_name(), line, col, self.indent))
-                    } else {
-                        None
-                    }
+            if is_char.is_ascii_alphabetic() {
+                Some((self.read_name(), line, col, self.indent))
+            } else if is_char == '!' {
+                self.forward();
+                if self.cur_char == Some('=') {
+                    self.forward();
+                    Some((Token::NotEq, line, col, self.indent))
+                } else {
+                    None
                 }
+            } else if SINGLE_CHAR_OPS.contains_key(&is_char) {
+                let first = is_char;
+                self.forward();
+                if self.cur_char == Some('=')
+                    && let Some(token) = DOUBLE_CHAR_OPS.get(&first).cloned()
+                {
+                    self.forward();
+                    Some((token, line, col, self.indent))
+                } else {
+                    Some((SINGLE_CHAR_OPS.get(&first).cloned().unwrap(), line, col, self.indent))
+                }
+            } else {
+                None
             }
         } else {
             None
