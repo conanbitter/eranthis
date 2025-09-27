@@ -100,10 +100,16 @@ impl<'a> Lexer<'a> {
             }
             Some((Token::NewLine, line, col, old_indent))
         } else if let Some(is_char) = self.cur_char {
+            // Names and keywords
             if is_char.is_ascii_alphabetic() {
                 Some((self.read_name(), line, col, self.indent))
+            // Number literals (int and float)
             } else if is_char.is_ascii_digit() {
                 Some((self.read_number(), line, col, self.indent))
+            // String literals
+            } else if is_char == '"' {
+                Some((Token::Str(self.read_str()), line, col, self.indent))
+            // Not equal operator (special case)
             } else if is_char == '!' {
                 self.forward();
                 if self.cur_char == Some('=') {
@@ -112,6 +118,7 @@ impl<'a> Lexer<'a> {
                 } else {
                     None
                 }
+            // Operators
             } else if SINGLE_CHAR_OPS.contains_key(&is_char) {
                 let first = is_char;
                 self.forward();
@@ -227,6 +234,30 @@ impl<'a> Lexer<'a> {
         } else {
             Token::Int(integer)
         }
+    }
+
+    fn read_str(&mut self) -> String {
+        self.forward();
+        let mut escaping = false;
+        let mut result = String::new();
+        while let Some(is_char) = self.cur_char {
+            if escaping {
+                result.push(is_char);
+                self.forward();
+                escaping = false;
+            } else {
+                match is_char {
+                    '"' => break,
+                    '\\' => escaping = true,
+                    _ => result.push(is_char),
+                }
+                self.forward();
+            }
+        }
+        if self.cur_char == Some('"') {
+            self.forward();
+        }
+        result
     }
 }
 
