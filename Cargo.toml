@@ -5,4 +5,6 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.100"
+phf = "0.13.1"
+phf_macros = "0.13.1"
 pomelo = "0.2.3"

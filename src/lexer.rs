@@ -1,6 +1,27 @@
 use std::{collections::VecDeque, str::Chars};
 
+use phf_macros::phf_map;
+
 use crate::parser::Token;
+
+static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
+    "const" => Token::KwConst,
+    "elif" => Token::KwElif,
+    "else" => Token::KwElse,
+    "for" => Token::KwFor,
+    "func" => Token::KwFunc,
+    "if" => Token::KwIf,
+    "in" => Token::KwIn,
+    "ref" => Token::KwRef,
+    "return" => Token::KwReturn,
+    "step" => Token::KwStep,
+    "struct" => Token::KwStruct,
+    "then" => Token::KwThen,
+    "to" => Token::KwTo,
+    "type" => Token::KwType,
+    "var" => Token::KwVar,
+    "while" => Token::KwWhile,
+};
 
 pub struct Lexer<'a> {
     data: Chars<'a>,
@@ -47,12 +68,7 @@ impl<'a> Lexer<'a> {
             match is_char {
                 _ => {
                     if is_char.is_ascii_alphabetic() {
-                        let name = self.read_name();
-                        if name == "test" {
-                            Some((Token::KwTest, line, col, self.indent))
-                        } else {
-                            None
-                        }
+                        Some((self.read_name(), line, col, self.indent))
                     } else {
                         None
                     }
@@ -119,12 +135,12 @@ impl<'a> Lexer<'a> {
 
     fn skip_comments(&mut self) {
         self.forward();
-        while self.cur_char != None && self.cur_char != Some('\n') {
+        while self.cur_char.is_some() && self.cur_char != Some('\n') {
             self.forward();
         }
     }
 
-    fn read_name(&mut self) -> String {
+    fn read_name(&mut self) -> Token {
         let mut result = String::new();
         while let Some(is_char) = self.cur_char
             && (is_char.is_ascii_alphanumeric() || is_char == '_')
@@ -132,7 +148,11 @@ impl<'a> Lexer<'a> {
             result.push(is_char);
             self.forward();
         }
-        result
+        if let Some(token) = KEYWORDS.get(&result).cloned() {
+            token
+        } else {
+            Token::Name(result)
+        }
     }
 }
 
