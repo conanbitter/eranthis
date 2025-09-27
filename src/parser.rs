@@ -46,6 +46,7 @@ pomelo! {
     %type stmt_list Vec<Node>;
     %type stmt Node;
     %type expr Node;
+    %type var String;
 
 
     %left KwOr;
@@ -54,7 +55,7 @@ pomelo! {
     %nonassoc Less LessOrEq Greater GreaterOrEq;
     %left Add Sub;
     %left Mul Div Mod;
-    %right Not;
+    %right KwNot;
 
     root ::= stmt_list(sl) { Node::DummyVec(sl) };
 
@@ -63,21 +64,27 @@ pomelo! {
 
     stmt ::= expr NewLine;
 
-    expr ::= Int(v) { Node::IntLiteral(v) };
+    expr ::= Int(v)   { Node::IntLiteral(v) };
     expr ::= Float(v) { Node::FloatLiteral(v) };
-    expr ::= expr(l) Add expr(r) { Node::BinOp(BinOp::Add,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) Sub expr(r) { Node::BinOp(BinOp::Sub,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) Mul expr(r) { Node::BinOp(BinOp::Mul,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) Div expr(r) { Node::BinOp(BinOp::Div,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) Mod expr(r) { Node::BinOp(BinOp::Mod,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) Less expr(r) { Node::BinOp(BinOp::Less,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) LessOrEq expr(r) { Node::BinOp(BinOp::LessEq,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) Greater expr(r) { Node::BinOp(BinOp::Greater,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) GreaterOrEq expr(r) { Node::BinOp(BinOp::GreaterEq,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) Eq expr(r) { Node::BinOp(BinOp::Eq,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) NotEq expr(r) { Node::BinOp(BinOp::NotEq,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) KwAnd expr(r) { Node::BinOp(BinOp::And,Box::new(l),Box::new(r)) };
-    expr ::= expr(l) KwOr expr(r) { Node::BinOp(BinOp::Or,Box::new(l),Box::new(r)) };
+    expr ::= var(v)   { Node::Var(v) };
+    expr ::= LParen expr RParen;
+    expr ::= expr(l) Add         expr(r) { Node::BinOp( BinOp::Add,      Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) Sub         expr(r) { Node::BinOp( BinOp::Sub,      Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) Mul         expr(r) { Node::BinOp( BinOp::Mul,      Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) Div         expr(r) { Node::BinOp( BinOp::Div,      Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) Mod         expr(r) { Node::BinOp( BinOp::Mod,      Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) Less        expr(r) { Node::BinOp( BinOp::Less,     Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) LessOrEq    expr(r) { Node::BinOp( BinOp::LessEq,   Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) Greater     expr(r) { Node::BinOp( BinOp::Greater,  Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) GreaterOrEq expr(r) { Node::BinOp( BinOp::GreaterEq,Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) Eq          expr(r) { Node::BinOp( BinOp::Eq,       Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) NotEq       expr(r) { Node::BinOp( BinOp::NotEq,    Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) KwAnd       expr(r) { Node::BinOp( BinOp::And,      Box::new(l), Box::new(r) ) };
+    expr ::= expr(l) KwOr        expr(r) { Node::BinOp( BinOp::Or,       Box::new(l), Box::new(r) ) };
+    expr ::= KwNot expr(e)       { Node::UnOp( UnOp::Not, Box::new(e) ) };
+    expr ::= Sub expr(e) [KwNot] { Node::UnOp( UnOp::Neg, Box::new(e) ) };
+
+    var ::= Name;
 
     root ::= NewLine { Node::Dummy };
     root ::= Indent { Node::Dummy };
