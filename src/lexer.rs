@@ -96,13 +96,13 @@ impl<'a> Lexer<'a> {
     }
 
     fn forward(&mut self) {
-        self.cur_char = self.data.next();
         if self.cur_char == Some('\n') {
             self.line += 1;
-            self.col = 1;
+            self.col = 2;
         } else {
             self.col += 1;
         }
+        self.cur_char = self.data.next();
     }
 
     fn skip_spaces(&mut self) -> u32 {
