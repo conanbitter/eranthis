@@ -187,7 +187,14 @@ impl<'a> Lexer<'a> {
     }
 
     fn read_hex(&mut self) -> i64 {
-        0
+        let mut result = String::new();
+        while let Some(is_char) = self.cur_char
+            && is_char.is_ascii_hexdigit()
+        {
+            result.push(is_char);
+            self.forward();
+        }
+        i64::from_str_radix(&result, 16).unwrap()
     }
 
     fn read_number(&mut self) -> Token {

@@ -5,6 +5,7 @@ t = 34.65
 t = 0.65
 t = 23e-2
 t = 23.4e1
+t = 0xFF
 a =b+d
 c/=f%(h*f)
 r=a!=b and c>=d
