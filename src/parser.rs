@@ -48,6 +48,7 @@ pomelo! {
     %type expr Node;
     %type var Vec<String>;
     %type fncall Node;
+    %type param_list Vec<Node>;
 
 
     %left KwOr;
@@ -89,7 +90,11 @@ pomelo! {
     var ::= var(mut v) Period Name(n) { v.push(n); v };
     var ::= Name(n) { vec![n] };
 
-    fncall ::= var(v) LParen RParen { Node::FnCall(v) };
+    fncall ::= var(v) LParen param_list(pl) RParen { Node::FnCall(v, pl) };
+
+    param_list ::= param_list(mut pl) Comma expr(e) { pl.push(e); pl };
+    param_list ::= expr(e) { vec![e] };
+    param_list ::= { vec![] };
 
     root ::= NewLine { Node::Dummy };
     root ::= Indent { Node::Dummy };
@@ -105,7 +110,7 @@ pomelo! {
     root ::= KwFunc { Node::Dummy };
     root ::= KwIf { Node::Dummy };
     root ::= KwIn { Node::Dummy };
-    root ::= KwNot { Node::Dummy };
+    //root ::= KwNot { Node::Dummy };
     //root ::= KwOr { Node::Dummy };
     root ::= KwRef { Node::Dummy };
     root ::= KwReturn { Node::Dummy };
@@ -134,11 +139,11 @@ pomelo! {
     //root ::= GreaterOrEq { Node::Dummy };
     //root ::= Eq { Node::Dummy };
     //root ::= NotEq { Node::Dummy };
-    root ::= Comma { Node::Dummy };
-    root ::= Period { Node::Dummy };
+    //root ::= Comma { Node::Dummy };
+    //root ::= Period { Node::Dummy };
     root ::= Colon { Node::Dummy };
-    root ::= LParen { Node::Dummy };
-    root ::= RParen { Node::Dummy };
+    //root ::= LParen { Node::Dummy };
+    //root ::= RParen { Node::Dummy };
     root ::= LSqBracket { Node::Dummy };
     root ::= RSqBracket { Node::Dummy };
 }

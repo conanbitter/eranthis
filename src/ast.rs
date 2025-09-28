@@ -5,7 +5,7 @@ pub enum Node {
     BinOp(BinOp, Box<Node>, Box<Node>),
     UnOp(UnOp, Box<Node>),
     Var(Vec<String>),
-    FnCall(Vec<String>),
+    FnCall(Vec<String>, Vec<Node>),
     Dummy,
     DummyVec(Vec<Node>),
 }
@@ -76,16 +76,20 @@ const DEBUG_INDENT: &str = "    ";
 fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Result<()> {
     match node {
         Node::IntLiteral(v) => {
-            writeln!(w, "{}int:{}", indent, v)?;
+            writeln!(w, "{}int {}", indent, v)?;
         }
         Node::FloatLiteral(v) => {
-            writeln!(w, "{}float:{}", indent, v)?;
+            writeln!(w, "{}float {}", indent, v)?;
         }
         Node::Var(items) => {
             writeln!(w, "{}var {{ {} }}", indent, items.join(" -> "))?;
         }
-        Node::FnCall(items) => {
+        Node::FnCall(items, params) => {
             writeln!(w, "{}func {{ {} }}", indent, items.join(" -> "))?;
+            for (i, node) in params.iter().enumerate() {
+                writeln!(w, "{}param[{}]:", indent.clone(), i)?;
+                dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+            }
         }
         Node::Dummy => {
             writeln!(w, "{}dummy", indent)?;
@@ -105,9 +109,9 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         }
 
         Node::DummyVec(nodes) => {
-            writeln!(w, "{}dummyvec:", indent.clone())?;
+            writeln!(w, "{}dummyvec", indent.clone())?;
             for (i, node) in nodes.iter().enumerate() {
-                writeln!(w, "[{}]", i)?;
+                writeln!(w, "{}[{}]:", indent.clone(), i)?;
                 dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
             }
         }

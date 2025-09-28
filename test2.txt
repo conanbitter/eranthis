@@ -1,4 +1,4 @@
 3.4+7+6*  7 and 6%4>=6
 (7+6)*5
-fd()+fd.trt()
+fd(4)+fd.trt(fg,56,t and r)
 sde.jgy.frwe
