@@ -49,6 +49,7 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Node> {
 
 fn main() -> anyhow::Result<()> {
     let root = parse_file("test2.txt")?;
-    println!("{:?}", root);
+    ast::debug_dump(&root, "test2_result.txt")?;
+    //println!("{:?}", root);
     Ok(())
 }

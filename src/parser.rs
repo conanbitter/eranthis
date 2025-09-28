@@ -47,6 +47,7 @@ pomelo! {
     %type stmt Node;
     %type expr Node;
     %type var Vec<String>;
+    %type fncall Node;
 
 
     %left KwOr;
@@ -68,6 +69,7 @@ pomelo! {
     expr ::= Float(v) { Node::FloatLiteral(v) };
     expr ::= var(v)   { Node::Var(v) };
     expr ::= LParen expr RParen;
+    expr ::= fncall;
     expr ::= expr(l) Add         expr(r) { Node::BinOp( BinOp::Add,      Box::new(l), Box::new(r) ) };
     expr ::= expr(l) Sub         expr(r) { Node::BinOp( BinOp::Sub,      Box::new(l), Box::new(r) ) };
     expr ::= expr(l) Mul         expr(r) { Node::BinOp( BinOp::Mul,      Box::new(l), Box::new(r) ) };
@@ -86,6 +88,8 @@ pomelo! {
 
     var ::= var(mut v) Period Name(n) { v.push(n); v };
     var ::= Name(n) { vec![n] };
+
+    fncall ::= var(v) LParen RParen { Node::FnCall(v) };
 
     root ::= NewLine { Node::Dummy };
     root ::= Indent { Node::Dummy };
