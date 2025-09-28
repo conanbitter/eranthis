@@ -12,6 +12,7 @@ pub enum Node {
     OpAssign(Vec<String>, BinOp, Box<Node>),
     If(Box<Node>, Vec<Node>, Vec<(Node, Vec<Node>)>, Vec<Node>), // if (expr) (then block) (elifs blocks) (else block)
     For(Vec<String>, Box<Node>, Box<Node>, Option<Box<Node>>, Vec<Node>), // for (var) (start) (stop) (step) (block)
+    ForIn(Vec<String>, Box<Node>, Vec<Node>),                    // for (var) in (array) (block)
     Dummy,
     DummyVec(Vec<Node>),
 }
@@ -173,6 +174,14 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
                 writeln!(w, "{}step expr:", indent)?;
                 dump_node(step, w, indent.clone() + DEBUG_INDENT)?;
             }
+            for (i, node) in block.iter().enumerate() {
+                writeln!(w, "{}[{}]:", indent.clone(), i)?;
+                dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+            }
+        }
+        Node::ForIn(var, array, block) => {
+            writeln!(w, "{}for {{{}}} in:", indent, var.join(" -> "))?;
+            dump_node(array, w, indent.clone() + DEBUG_INDENT)?;
             for (i, node) in block.iter().enumerate() {
                 writeln!(w, "{}[{}]:", indent.clone(), i)?;
                 dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
