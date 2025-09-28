@@ -56,6 +56,8 @@ pomelo! {
     %type elif_branch (Node, Vec<Node>);
     %type elif_list Vec<(Node, Vec<Node>)>;
     %type boolval bool;
+    %type forstmt Node;
+    %type step_variant Box<Node>;
 
 
     %left KwOr;
@@ -74,16 +76,19 @@ pomelo! {
     stmt ::= assign NewLine;
     stmt ::= fncall NewLine;
     stmt ::= ifstmt;
+    stmt ::= forstmt;
 
     assign ::= var(v) Assign expr(e) { Node::Assign(v, Box::new(e)) };
 
     ifstmt ::= KwIf expr(e) KwThen expr(te) NewLine { Node::If(Box::new(e), vec![te], vec![], vec![]) };
     ifstmt ::= KwIf expr(e) NewLine block(b) elif_list?(el) else_branch?(eb) { Node::If(Box::new(e), b, el.unwrap_or(vec![]), eb.unwrap_or(vec![])) };
-
     else_branch ::= KwElse NewLine block;
     elif_branch ::= KwElif expr(e) NewLine block(b) { (e, b) };
     elif_list ::= elif_list(mut el) elif_branch(eb) { el.push(eb); el };
     elif_list ::= elif_branch(el) { vec![el] };
+
+    forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) NewLine block(b) { Node::For(v,Box::new(es), Box::new(ef), s, b) };
+    step_variant ::= KwStep expr(e) { Box::new(e) };
 
     expr ::= Int(v)     { Node::IntLiteral(v) };
     expr ::= Float(v)   { Node::FloatLiteral(v) };

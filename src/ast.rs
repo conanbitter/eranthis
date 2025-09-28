@@ -10,6 +10,7 @@ pub enum Node {
     FnCall(Vec<String>, Vec<Node>),
     Assign(Vec<String>, Box<Node>),
     If(Box<Node>, Vec<Node>, Vec<(Node, Vec<Node>)>, Vec<Node>), // if (expr) (then block) (elifs blocks) (else block)
+    For(Vec<String>, Box<Node>, Box<Node>, Option<Box<Node>>, Vec<Node>), // for (var) (start) (stop) (step) (block)
     Dummy,
     DummyVec(Vec<Node>),
 }
@@ -155,6 +156,21 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
                     writeln!(w, "{}[{}]:", indent.clone(), i)?;
                     dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
                 }
+            }
+        }
+        Node::For(var, start, stop, step, block) => {
+            writeln!(w, "{}for {{{}}}", indent, var.join(" -> "))?;
+            writeln!(w, "{}start expr:", indent)?;
+            dump_node(start, w, indent.clone() + DEBUG_INDENT)?;
+            writeln!(w, "{}stop expr:", indent)?;
+            dump_node(stop, w, indent.clone() + DEBUG_INDENT)?;
+            if let Some(step) = step {
+                writeln!(w, "{}step expr:", indent)?;
+                dump_node(step, w, indent.clone() + DEBUG_INDENT)?;
+            }
+            for (i, node) in block.iter().enumerate() {
+                writeln!(w, "{}[{}]:", indent.clone(), i)?;
+                dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
             }
         }
     }
