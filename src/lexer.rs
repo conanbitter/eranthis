@@ -368,11 +368,12 @@ fn print_token(token: Token, pos: FilePos, indent: u32) {
     println!("{:3} {:3} {:2}  {:?}", pos.line, pos.col, indent, token);
 }
 
+#[allow(dead_code)]
 pub fn debug_dump(lexer: &mut Lexer) -> anyhow::Result<()> {
     let mut indent_stack = VecDeque::new();
     indent_stack.push_front(0u32);
 
-    let mut last_pos = FilePos { col: 0, line: 0 };
+    let last_pos;
 
     loop {
         let LexerResult { token, pos, indent } = lexer.next()?;

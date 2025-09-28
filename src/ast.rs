@@ -251,6 +251,7 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn debug_dump<P: AsRef<Path>>(root: &Node, output_file: P) -> anyhow::Result<()> {
     let out = File::create(output_file)?;
     let mut wr = BufWriter::new(out);
