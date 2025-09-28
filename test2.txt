@@ -2,6 +2,15 @@ a += 4%6
 f.t(a)
 if a==b then print("a={}",a)
 b = true or false
+var a int
+var b float
+var
+    a string
+    b fixed
+var a byte =7
+var
+    a bool=false
+    b int =0
 for i=2 to 4 step 4
     a = 1
     b = 2
@@ -11,7 +20,7 @@ for a in rf
 if true
     if dert
         pass
-        
+
     elif el1
         d()
     elif el2

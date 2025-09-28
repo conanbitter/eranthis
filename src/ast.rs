@@ -13,6 +13,7 @@ pub enum Node {
     If(Box<Node>, Vec<Node>, Vec<(Node, Vec<Node>)>, Vec<Node>), // if (expr) (then block) (elifs blocks) (else block)
     For(Vec<String>, Box<Node>, Box<Node>, Option<Box<Node>>, Vec<Node>), // for (var) (start) (stop) (step) (block)
     ForIn(Vec<String>, Box<Node>, Vec<Node>),                    // for (var) in (array) (block)
+    VarDecl(Vec<(String, DataType, Option<Node>)>),              // var (name) (type) [=(expr)]
     Dummy,
     DummyVec(Vec<Node>),
 }
@@ -40,6 +41,15 @@ pub enum UnOp {
     Not,
 }
 
+#[derive(Debug)]
+pub enum DataType {
+    Byte,
+    Int,
+    Float,
+    Fixed,
+    String,
+    Bool,
+}
 // DEBUG
 
 use std::{
@@ -74,6 +84,19 @@ impl Display for UnOp {
         match self {
             UnOp::Neg => write!(f, "-"),
             UnOp::Not => write!(f, "not"),
+        }
+    }
+}
+
+impl Display for DataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataType::Byte => write!(f, "byte"),
+            DataType::Int => write!(f, "int"),
+            DataType::Float => write!(f, "float"),
+            DataType::Fixed => write!(f, "fixed"),
+            DataType::String => write!(f, "string"),
+            DataType::Bool => write!(f, "bool"),
         }
     }
 }
@@ -185,6 +208,16 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
             for (i, node) in block.iter().enumerate() {
                 writeln!(w, "{}[{}]:", indent.clone(), i)?;
                 dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+            }
+        }
+        Node::VarDecl(vars) => {
+            for (name, vartype, init) in vars {
+                if let Some(node) = init {
+                    writeln!(w, "{}var {} type {} init:", indent, name, vartype)?;
+                    dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+                } else {
+                    writeln!(w, "{}var {} type {}", indent, name, vartype)?;
+                }
             }
         }
     }

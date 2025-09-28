@@ -59,6 +59,11 @@ pomelo! {
     %type forstmt Node;
     %type step_variant Box<Node>;
     %type opassign BinOp;
+    %type vardecl Node;
+    %type single_decl (String, DataType, Option<Node>);
+    %type data_type DataType;
+    %type opt_assign Node;
+    %type decl_list Vec<(String, DataType, Option<Node>)>;
 
 
     %left KwOr;
@@ -78,6 +83,7 @@ pomelo! {
     stmt ::= fncall NewLine;
     stmt ::= ifstmt;
     stmt ::= forstmt;
+    stmt ::= vardecl;
 
     assign ::= var(v) Assign expr(e) { Node::Assign(v, Box::new(e)) };
     assign ::= var(v) opassign(o) expr(e) { Node::OpAssign(v, o, Box::new(e)) };
@@ -97,6 +103,13 @@ pomelo! {
     forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) NewLine block(b) { Node::For(v,Box::new(es), Box::new(ef), s, b) };
     step_variant ::= KwStep expr(e) { Box::new(e) };
     forstmt ::= KwFor var(v) KwIn expr(ea) NewLine block(b) { Node::ForIn(v,Box::new(ea), b) };
+
+    vardecl ::= KwVar single_decl(sv) NewLine { Node::VarDecl(vec![sv]) };
+    vardecl ::= KwVar NewLine Indent decl_list(dl) NewLine Dedent { Node::VarDecl(dl) };
+    single_decl ::= Name(n) data_type(t) opt_assign?(a) { (n, t, a) };
+    opt_assign ::= Assign expr;
+    decl_list ::= decl_list(mut dl) NewLine single_decl(d) { dl.push(d); dl };
+    decl_list ::= single_decl(d) { vec![d] };
 
     expr ::= Int(v)     { Node::IntLiteral(v) };
     expr ::= Float(v)   { Node::FloatLiteral(v) };
@@ -121,8 +134,15 @@ pomelo! {
     expr ::= KwNot expr(e)       { Node::UnOp( UnOp::Not, Box::new(e) ) };
     expr ::= Sub expr(e) [KwNot] { Node::UnOp( UnOp::Neg, Box::new(e) ) };
 
-    boolval ::= KwTrue  { true }
-    boolval ::= KwFalse { false}
+    boolval ::= KwTrue  { true };
+    boolval ::= KwFalse { false };
+
+    data_type ::= KwByte { DataType::Byte };
+    data_type ::= KwInt { DataType::Int };
+    data_type ::= KwFloat { DataType::Float };
+    data_type ::= KwFixed { DataType::Fixed };
+    data_type ::= KwString { DataType::String };
+    data_type ::= KwBool { DataType::Bool };
 
     var ::= var(mut v) Period Name(n) { v.push(n); v };
     var ::= Name(n) { vec![n] };
