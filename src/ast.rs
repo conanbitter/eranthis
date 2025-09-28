@@ -16,6 +16,8 @@ pub enum Node {
     VarDecl(Vec<(String, DataType, Option<Node>)>),              // var (name) (type) [=(expr)]
     ConstDecl(Vec<(String, DataType, Node)>),                    // const (name) (type) =(expr)
     TypeConvert(Box<Node>, DataType),
+    While(Box<Node>, Vec<Node>),
+    Return(Box<Node>),
     Dummy,
     DummyVec(Vec<Node>),
 }
@@ -230,6 +232,19 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         }
         Node::TypeConvert(expr, data_type) => {
             writeln!(w, "{}convert to {} from:", indent, data_type)?;
+            dump_node(expr, w, indent.clone() + DEBUG_INDENT)?;
+        }
+        Node::While(cond, block) => {
+            writeln!(w, "{}while", indent)?;
+            writeln!(w, "{}condition:", indent)?;
+            dump_node(cond, w, indent.clone() + DEBUG_INDENT)?;
+            for (i, node) in block.iter().enumerate() {
+                writeln!(w, "{}[{}]:", indent.clone(), i)?;
+                dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+            }
+        }
+        Node::Return(expr) => {
+            writeln!(w, "{}return:", indent)?;
             dump_node(expr, w, indent.clone() + DEBUG_INDENT)?;
         }
     }

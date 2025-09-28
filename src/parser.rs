@@ -70,6 +70,8 @@ pomelo! {
     %type single_constdecl (String, DataType, Node);
     %type constdecl_list Vec<(String, DataType, Node)>;
     %type type_convert Node;
+    %type returnstmt Node;
+    %type whilestmt Node;
 
 
     %left KwOr;
@@ -87,10 +89,12 @@ pomelo! {
 
     stmt ::= assign NewLine;
     stmt ::= fncall NewLine;
+    stmt ::= returnstmt NewLine;
     stmt ::= ifstmt;
     stmt ::= forstmt;
     stmt ::= vardecl;
     stmt ::= constdecl; // temporary
+    stmt ::= whilestmt;
 
     assign ::= var(v) Assign expr(e) { Node::Assign(v, Box::new(e)) };
     assign ::= var(v) opassign(o) expr(e) { Node::OpAssign(v, o, Box::new(e)) };
@@ -123,6 +127,10 @@ pomelo! {
     single_constdecl ::= Name(n) basic_type(t) Assign expr(e) { (n, t, e) };
     constdecl_list ::= constdecl_list(mut dl) NewLine single_constdecl(d) { dl.push(d); dl };
     constdecl_list ::= single_constdecl(d) { vec![d] };
+
+    returnstmt ::= KwReturn expr(e) { Node::Return(Box::new(e)) };
+
+    whilestmt ::= KwWhile expr(e) NewLine block(b) { Node::While(Box::new(e), b) };
 
     expr ::= Int(v)     { Node::IntLiteral(v) };
     expr ::= Float(v)   { Node::FloatLiteral(v) };
@@ -189,14 +197,14 @@ pomelo! {
     //root ::= KwNot { Node::Dummy };
     //root ::= KwOr { Node::Dummy };
     root ::= KwRef { Node::Dummy };
-    root ::= KwReturn { Node::Dummy };
+    //root ::= KwReturn { Node::Dummy };
     //root ::= KwStep { Node::Dummy };
     root ::= KwStruct { Node::Dummy };
     //root ::= KwThen { Node::Dummy };
     //root ::= KwTo { Node::Dummy };
     root ::= KwType { Node::Dummy };
     //root ::= KwVar { Node::Dummy };
-    root ::= KwWhile { Node::Dummy };
+    //root ::= KwWhile { Node::Dummy };
 
     //root ::= Assign { Node::Dummy };
     //root ::= Add { Node::Dummy };
