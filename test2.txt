@@ -7,7 +7,7 @@ var b float
 var
     a string
     b fixed
-var a byte =7
+var a byte = byte(7)
 var
     a bool=false
     b int =0

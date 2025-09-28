@@ -63,12 +63,13 @@ pomelo! {
     %type opassign BinOp;
     %type vardecl Node;
     %type single_vardecl (String, DataType, Option<Node>);
-    %type data_type DataType;
+    %type basic_type DataType;
     %type opt_assign Node;
     %type vardecl_list Vec<(String, DataType, Option<Node>)>;
     %type constdecl Node;
     %type single_constdecl (String, DataType, Node);
     %type constdecl_list Vec<(String, DataType, Node)>;
+    %type type_convert Node;
 
 
     %left KwOr;
@@ -112,14 +113,14 @@ pomelo! {
 
     vardecl ::= KwVar single_vardecl(sv) NewLine { Node::VarDecl(vec![sv]) };
     vardecl ::= KwVar NewLine Indent vardecl_list(dl) NewLine Dedent { Node::VarDecl(dl) };
-    single_vardecl ::= Name(n) data_type(t) opt_assign?(a) { (n, t, a) };
+    single_vardecl ::= Name(n) basic_type(t) opt_assign?(a) { (n, t, a) };
     opt_assign ::= Assign expr;
     vardecl_list ::= vardecl_list(mut dl) NewLine single_vardecl(d) { dl.push(d); dl };
     vardecl_list ::= single_vardecl(d) { vec![d] };
 
     constdecl ::= KwConst single_constdecl(sc) NewLine { Node::ConstDecl(vec![sc]) };
     constdecl ::= KwConst NewLine Indent constdecl_list(dl) NewLine Dedent { Node::ConstDecl(dl) };
-    single_constdecl ::= Name(n) data_type(t) Assign expr(e) { (n, t, e) };
+    single_constdecl ::= Name(n) basic_type(t) Assign expr(e) { (n, t, e) };
     constdecl_list ::= constdecl_list(mut dl) NewLine single_constdecl(d) { dl.push(d); dl };
     constdecl_list ::= single_constdecl(d) { vec![d] };
 
@@ -130,6 +131,7 @@ pomelo! {
     expr ::= var(v)     { Node::Var(v) };
     expr ::= LParen expr RParen;
     expr ::= fncall;
+    expr ::= type_convert;
     expr ::= expr(l) Add         expr(r) { Node::BinOp( BinOp::Add,      Box::new(l), Box::new(r) ) };
     expr ::= expr(l) Sub         expr(r) { Node::BinOp( BinOp::Sub,      Box::new(l), Box::new(r) ) };
     expr ::= expr(l) Mul         expr(r) { Node::BinOp( BinOp::Mul,      Box::new(l), Box::new(r) ) };
@@ -149,12 +151,12 @@ pomelo! {
     boolval ::= KwTrue  { true };
     boolval ::= KwFalse { false };
 
-    data_type ::= KwByte { DataType::Byte };
-    data_type ::= KwInt { DataType::Int };
-    data_type ::= KwFloat { DataType::Float };
-    data_type ::= KwFixed { DataType::Fixed };
-    data_type ::= KwString { DataType::String };
-    data_type ::= KwBool { DataType::Bool };
+    basic_type ::= KwByte { DataType::Byte };
+    basic_type ::= KwInt { DataType::Int };
+    basic_type ::= KwFloat { DataType::Float };
+    basic_type ::= KwFixed { DataType::Fixed };
+    basic_type ::= KwString { DataType::String };
+    basic_type ::= KwBool { DataType::Bool };
 
     var ::= var(mut v) Period Name(n) { v.push(n); v };
     var ::= Name(n) { vec![n] };
@@ -164,6 +166,8 @@ pomelo! {
     param_list ::= param_list(mut pl) Comma expr(e) { pl.push(e); pl };
     param_list ::= expr(e) { vec![e] };
     param_list ::= { vec![] };
+
+    type_convert ::= basic_type(t) LParen expr(e) RParen { Node::TypeConvert(Box::new(e), t) };
 
     block ::= Indent stmt_list Dedent;
     block ::= Indent KwPass NewLine Dedent { vec![] };
