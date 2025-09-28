@@ -9,6 +9,7 @@ pub enum Node {
     Var(Vec<String>),
     FnCall(Vec<String>, Vec<Node>),
     Assign(Vec<String>, Box<Node>),
+    OpAssign(Vec<String>, BinOp, Box<Node>),
     If(Box<Node>, Vec<Node>, Vec<(Node, Vec<Node>)>, Vec<Node>), // if (expr) (then block) (elifs blocks) (else block)
     For(Vec<String>, Box<Node>, Box<Node>, Option<Box<Node>>, Vec<Node>), // for (var) (start) (stop) (step) (block)
     Dummy,
@@ -125,6 +126,10 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         }
         Node::Assign(items, node) => {
             writeln!(w, "{}assign to {{ {} }}:", indent, items.join(" -> "))?;
+            dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+        }
+        Node::OpAssign(items, op, node) => {
+            writeln!(w, "{}assign and {} to {{ {} }}:", indent, op, items.join(" -> "))?;
             dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
         }
         Node::If(expr, then_block, elifs, else_block) => {

@@ -58,6 +58,7 @@ pomelo! {
     %type boolval bool;
     %type forstmt Node;
     %type step_variant Box<Node>;
+    %type opassign BinOp;
 
 
     %left KwOr;
@@ -79,6 +80,12 @@ pomelo! {
     stmt ::= forstmt;
 
     assign ::= var(v) Assign expr(e) { Node::Assign(v, Box::new(e)) };
+    assign ::= var(v) opassign(o) expr(e) { Node::OpAssign(v, o, Box::new(e)) };
+    opassign ::= AddAssign { BinOp::Add };
+    opassign ::= SubAssign { BinOp::Sub };
+    opassign ::= MulAssign { BinOp::Mul };
+    opassign ::= DivAssign { BinOp::Div };
+    opassign ::= ModAssign { BinOp::Mod };
 
     ifstmt ::= KwIf expr(e) KwThen expr(te) NewLine { Node::If(Box::new(e), vec![te], vec![], vec![]) };
     ifstmt ::= KwIf expr(e) NewLine block(b) elif_list?(el) else_branch?(eb) { Node::If(Box::new(e), b, el.unwrap_or(vec![]), eb.unwrap_or(vec![])) };
@@ -127,43 +134,43 @@ pomelo! {
 
     block ::= Indent stmt_list Dedent;
 
-    root ::= NewLine { Node::Dummy };
-    root ::= Indent { Node::Dummy };
-    root ::= Dedent { Node::Dummy };
-    root ::= Name { Node::Dummy };
-    root ::= Str { Node::Dummy };
+    //root ::= NewLine { Node::Dummy };
+    //root ::= Indent { Node::Dummy };
+    //root ::= Dedent { Node::Dummy };
+    //root ::= Name { Node::Dummy };
+    //root ::= Str { Node::Dummy };
 
     //root ::= KwAnd { Node::Dummy };
     root ::= KwConst { Node::Dummy };
-    root ::= KwElif { Node::Dummy };
-    root ::= KwElse { Node::Dummy };
-    root ::= KwFor { Node::Dummy };
+    //root ::= KwElif { Node::Dummy };
+    //root ::= KwElse { Node::Dummy };
+    //root ::= KwFor { Node::Dummy };
     root ::= KwFunc { Node::Dummy };
-    root ::= KwIf { Node::Dummy };
+    //root ::= KwIf { Node::Dummy };
     root ::= KwIn { Node::Dummy };
     //root ::= KwNot { Node::Dummy };
     //root ::= KwOr { Node::Dummy };
     root ::= KwRef { Node::Dummy };
     root ::= KwReturn { Node::Dummy };
-    root ::= KwStep { Node::Dummy };
+    //root ::= KwStep { Node::Dummy };
     root ::= KwStruct { Node::Dummy };
-    root ::= KwThen { Node::Dummy };
-    root ::= KwTo { Node::Dummy };
+    //root ::= KwThen { Node::Dummy };
+    //root ::= KwTo { Node::Dummy };
     root ::= KwType { Node::Dummy };
     root ::= KwVar { Node::Dummy };
     root ::= KwWhile { Node::Dummy };
 
-    root ::= Assign { Node::Dummy };
+    //root ::= Assign { Node::Dummy };
     //root ::= Add { Node::Dummy };
-    root ::= AddAssign { Node::Dummy };
+    //root ::= AddAssign { Node::Dummy };
     //root ::= Sub { Node::Dummy };
-    root ::= SubAssign { Node::Dummy };
+    //root ::= SubAssign { Node::Dummy };
     //root ::= Mul { Node::Dummy };
-    root ::= MulAssign { Node::Dummy };
+    //root ::= MulAssign { Node::Dummy };
     //root ::= Div { Node::Dummy };
-    root ::= DivAssign { Node::Dummy };
+    //root ::= DivAssign { Node::Dummy };
     //root ::= Mod { Node::Dummy };
-    root ::= ModAssign { Node::Dummy };
+    //root ::= ModAssign { Node::Dummy };
     //root ::= Less { Node::Dummy };
     //root ::= LessOrEq { Node::Dummy };
     //root ::= Greater { Node::Dummy };

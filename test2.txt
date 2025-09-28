@@ -1,4 +1,4 @@
-a = 4%6
+a += 4%6
 f.t(a)
 if a==b then print("a={}",a)
 b = true or false
