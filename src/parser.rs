@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use pomelo::pomelo;
 
 pomelo! {
@@ -13,7 +15,7 @@ pomelo! {
     %syntax_error {
         let expected_list = expected
             .map(|x| if let Some(sometoken) = x.token{
-                    format!(" {:?}", sometoken)
+                    format!(" {}", sometoken)
                 }else{
                     format!(" {}", x.name)
                 })
@@ -21,7 +23,7 @@ pomelo! {
             .join(", ");
 
         if let Some(sometoken) = token{
-            Err(anyhow::anyhow!("[Ln {}, Col {}] ERROR: got {:?}, expecting {}", extra.line, extra.col, sometoken, expected_list))
+            Err(anyhow::anyhow!("[Ln {}, Col {}] ERROR: got {}, expecting {}", extra.line, extra.col, sometoken, expected_list))
         }else{
             Err(anyhow::anyhow!("[Ln {}, Col {}] ERROR: expecting {}", extra.line, extra.col, expected_list))
         }
@@ -228,3 +230,70 @@ pomelo! {
 
 pub use parser::Parser;
 pub use parser::Token;
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Name(name) => write!(f, "name '{}'", name),
+            Token::Str(st) => write!(f, "string literal '{}'", st),
+            Token::Int(v) => write!(f, "int literal ({})", v),
+            Token::Float(v) => write!(f, "float literal ({})", v),
+            Token::Eof => write!(f, "end of file"),
+            Token::KwOr => write!(f, "'or'"),
+            Token::KwAnd => write!(f, "'and'"),
+            Token::Eq => write!(f, "'=='"),
+            Token::NotEq => write!(f, "'!='"),
+            Token::Less => write!(f, "'<'"),
+            Token::LessOrEq => write!(f, "'<='"),
+            Token::Greater => write!(f, "'>'"),
+            Token::GreaterOrEq => write!(f, "'>='"),
+            Token::Add => write!(f, "'+'"),
+            Token::Sub => write!(f, "'-'"),
+            Token::Mul => write!(f, "'*'"),
+            Token::Div => write!(f, "'/'"),
+            Token::Mod => write!(f, "'%'"),
+            Token::KwNot => write!(f, "'not'"),
+            Token::NewLine => write!(f, "new line"),
+            Token::Assign => write!(f, "'='"),
+            Token::AddAssign => write!(f, "'+='"),
+            Token::SubAssign => write!(f, "'-='"),
+            Token::MulAssign => write!(f, "'*='"),
+            Token::DivAssign => write!(f, "'/='"),
+            Token::ModAssign => write!(f, "'%='"),
+            Token::KwIf => write!(f, "'if'"),
+            Token::KwThen => write!(f, "'then'"),
+            Token::KwElse => write!(f, "'else'"),
+            Token::KwElif => write!(f, "'elif'"),
+            Token::KwFor => write!(f, "'for'"),
+            Token::KwTo => write!(f, "'to'"),
+            Token::KwStep => write!(f, "'step'"),
+            Token::KwIn => write!(f, "'in'"),
+            Token::KwVar => write!(f, "'var'"),
+            Token::Indent => write!(f, "indent"),
+            Token::Dedent => write!(f, "dedent"),
+            Token::KwConst => write!(f, "'const'"),
+            Token::LParen => write!(f, "'('"),
+            Token::RParen => write!(f, "')'"),
+            Token::KwTrue => write!(f, "'true'"),
+            Token::KwFalse => write!(f, "'false'"),
+            Token::KwByte => write!(f, "'byte'"),
+            Token::KwInt => write!(f, "'int'"),
+            Token::KwFloat => write!(f, "'float'"),
+            Token::KwFixed => write!(f, "'fixed'"),
+            Token::KwString => write!(f, "'string'"),
+            Token::KwBool => write!(f, "'bool'"),
+            Token::Period => write!(f, "'.'"),
+            Token::Comma => write!(f, "','"),
+            Token::KwPass => write!(f, "'pass'"),
+            Token::KwFunc => write!(f, "'func'"),
+            Token::KwRef => write!(f, "'ref'"),
+            Token::KwReturn => write!(f, "'return'"),
+            Token::KwStruct => write!(f, "'struct'"),
+            Token::KwType => write!(f, "'type'"),
+            Token::KwWhile => write!(f, "'while'"),
+            Token::Colon => write!(f, "':'"),
+            Token::LSqBracket => write!(f, "'['"),
+            Token::RSqBracket => write!(f, "']'"),
+        }
+    }
+}
