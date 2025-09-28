@@ -11,6 +11,12 @@ var a byte =7
 var
     a bool=false
     b int =0
+
+const A int = 6
+const
+    SD float = 2
+    CA int = 2
+
 for i=2 to 4 step 4
     a = 1
     b = 2

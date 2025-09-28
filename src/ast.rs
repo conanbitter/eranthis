@@ -14,6 +14,7 @@ pub enum Node {
     For(Vec<String>, Box<Node>, Box<Node>, Option<Box<Node>>, Vec<Node>), // for (var) (start) (stop) (step) (block)
     ForIn(Vec<String>, Box<Node>, Vec<Node>),                    // for (var) in (array) (block)
     VarDecl(Vec<(String, DataType, Option<Node>)>),              // var (name) (type) [=(expr)]
+    ConstDecl(Vec<(String, DataType, Node)>),                    // const (name) (type) =(expr)
     Dummy,
     DummyVec(Vec<Node>),
 }
@@ -218,6 +219,12 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
                 } else {
                     writeln!(w, "{}var {} type {}", indent, name, vartype)?;
                 }
+            }
+        }
+        Node::ConstDecl(vars) => {
+            for (name, consttype, init) in vars {
+                writeln!(w, "{}const {} type {}:", indent, name, consttype)?;
+                dump_node(init, w, indent.clone() + DEBUG_INDENT)?;
             }
         }
     }

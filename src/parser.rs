@@ -60,10 +60,13 @@ pomelo! {
     %type step_variant Box<Node>;
     %type opassign BinOp;
     %type vardecl Node;
-    %type single_decl (String, DataType, Option<Node>);
+    %type single_vardecl (String, DataType, Option<Node>);
     %type data_type DataType;
     %type opt_assign Node;
-    %type decl_list Vec<(String, DataType, Option<Node>)>;
+    %type vardecl_list Vec<(String, DataType, Option<Node>)>;
+    %type constdecl Node;
+    %type single_constdecl (String, DataType, Node);
+    %type constdecl_list Vec<(String, DataType, Node)>;
 
 
     %left KwOr;
@@ -84,6 +87,7 @@ pomelo! {
     stmt ::= ifstmt;
     stmt ::= forstmt;
     stmt ::= vardecl;
+    stmt ::= constdecl; // temporary
 
     assign ::= var(v) Assign expr(e) { Node::Assign(v, Box::new(e)) };
     assign ::= var(v) opassign(o) expr(e) { Node::OpAssign(v, o, Box::new(e)) };
@@ -104,12 +108,18 @@ pomelo! {
     step_variant ::= KwStep expr(e) { Box::new(e) };
     forstmt ::= KwFor var(v) KwIn expr(ea) NewLine block(b) { Node::ForIn(v,Box::new(ea), b) };
 
-    vardecl ::= KwVar single_decl(sv) NewLine { Node::VarDecl(vec![sv]) };
-    vardecl ::= KwVar NewLine Indent decl_list(dl) NewLine Dedent { Node::VarDecl(dl) };
-    single_decl ::= Name(n) data_type(t) opt_assign?(a) { (n, t, a) };
+    vardecl ::= KwVar single_vardecl(sv) NewLine { Node::VarDecl(vec![sv]) };
+    vardecl ::= KwVar NewLine Indent vardecl_list(dl) NewLine Dedent { Node::VarDecl(dl) };
+    single_vardecl ::= Name(n) data_type(t) opt_assign?(a) { (n, t, a) };
     opt_assign ::= Assign expr;
-    decl_list ::= decl_list(mut dl) NewLine single_decl(d) { dl.push(d); dl };
-    decl_list ::= single_decl(d) { vec![d] };
+    vardecl_list ::= vardecl_list(mut dl) NewLine single_vardecl(d) { dl.push(d); dl };
+    vardecl_list ::= single_vardecl(d) { vec![d] };
+
+    constdecl ::= KwConst single_constdecl(sc) NewLine { Node::ConstDecl(vec![sc]) };
+    constdecl ::= KwConst NewLine Indent constdecl_list(dl) NewLine Dedent { Node::ConstDecl(dl) };
+    single_constdecl ::= Name(n) data_type(t) Assign expr(e) { (n, t, e) };
+    constdecl_list ::= constdecl_list(mut dl) NewLine single_constdecl(d) { dl.push(d); dl };
+    constdecl_list ::= single_constdecl(d) { vec![d] };
 
     expr ::= Int(v)     { Node::IntLiteral(v) };
     expr ::= Float(v)   { Node::FloatLiteral(v) };
@@ -163,13 +173,13 @@ pomelo! {
     //root ::= Str { Node::Dummy };
 
     //root ::= KwAnd { Node::Dummy };
-    root ::= KwConst { Node::Dummy };
+    //root ::= KwConst { Node::Dummy };
     //root ::= KwElif { Node::Dummy };
     //root ::= KwElse { Node::Dummy };
     //root ::= KwFor { Node::Dummy };
     root ::= KwFunc { Node::Dummy };
     //root ::= KwIf { Node::Dummy };
-    root ::= KwIn { Node::Dummy };
+    //root ::= KwIn { Node::Dummy };
     //root ::= KwNot { Node::Dummy };
     //root ::= KwOr { Node::Dummy };
     root ::= KwRef { Node::Dummy };
@@ -179,7 +189,7 @@ pomelo! {
     //root ::= KwThen { Node::Dummy };
     //root ::= KwTo { Node::Dummy };
     root ::= KwType { Node::Dummy };
-    root ::= KwVar { Node::Dummy };
+    //root ::= KwVar { Node::Dummy };
     root ::= KwWhile { Node::Dummy };
 
     //root ::= Assign { Node::Dummy };
@@ -207,13 +217,13 @@ pomelo! {
     root ::= LSqBracket { Node::Dummy };
     root ::= RSqBracket { Node::Dummy };
 
-    root ::= KwPass { Node::Dummy };
-    root ::= KwInt { Node::Dummy };
-    root ::= KwFloat { Node::Dummy };
-    root ::= KwString { Node::Dummy };
-    root ::= KwFixed { Node::Dummy };
-    root ::= KwByte { Node::Dummy };
-    root ::= KwBool { Node::Dummy };
+    //root ::= KwPass { Node::Dummy };
+    //root ::= KwInt { Node::Dummy };
+    //root ::= KwFloat { Node::Dummy };
+    //root ::= KwString { Node::Dummy };
+    //root ::= KwFixed { Node::Dummy };
+    //root ::= KwByte { Node::Dummy };
+    //root ::= KwBool { Node::Dummy };
 }
 
 pub use parser::Parser;
