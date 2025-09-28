@@ -363,9 +363,12 @@ pub fn debug_dump(lexer: &mut Lexer) -> anyhow::Result<()> {
     let mut indent_stack = VecDeque::new();
     indent_stack.push_front(0u32);
 
+    let mut last_pos = FilePos { col: 0, line: 0 };
+
     loop {
         let LexerResult { token, pos, indent } = lexer.next()?;
         if token == Token::Eof {
+            last_pos = pos;
             break;
         }
 
@@ -379,6 +382,12 @@ pub fn debug_dump(lexer: &mut Lexer) -> anyhow::Result<()> {
             }
         }
         print_token(token, pos, indent);
+    }
+
+    while let Some(indent) = indent_stack.pop_front()
+        && indent > 0
+    {
+        print_token(Token::Dedent, last_pos, indent);
     }
 
     Ok(())

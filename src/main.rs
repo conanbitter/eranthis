@@ -39,12 +39,20 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Node> {
         new_line = token == Token::NewLine;
         par.parse(token)?;
     }
-    if !new_line {
-        par.parse(Token::NewLine)?
-    }
-    Ok(par.end_of_input().unwrap().0)
 
+    if !new_line {
+        par.parse(Token::NewLine)?;
+    }
+
+    while let Some(indent) = indent_stack.pop_front()
+        && indent > 0
+    {
+        par.parse(Token::Dedent)?;
+    }
+
+    Ok(par.end_of_input()?.0)
     //lexer::debug_dump(&mut lex)?;
+    //Ok(Node::Dummy)
 }
 
 fn main() -> anyhow::Result<()> {

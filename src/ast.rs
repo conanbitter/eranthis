@@ -2,10 +2,13 @@
 pub enum Node {
     IntLiteral(i64),
     FloatLiteral(f64),
+    StringLiteral(String),
     BinOp(BinOp, Box<Node>, Box<Node>),
     UnOp(UnOp, Box<Node>),
     Var(Vec<String>),
     FnCall(Vec<String>, Vec<Node>),
+    Assign(Vec<String>, Box<Node>),
+    If(Box<Node>, Vec<Node>, Vec<(Node, Vec<Node>)>, Vec<Node>), // if (expr) (then block) (elifs blocks) (else block)
     Dummy,
     DummyVec(Vec<Node>),
 }
@@ -81,6 +84,9 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         Node::FloatLiteral(v) => {
             writeln!(w, "{}float {}", indent, v)?;
         }
+        Node::StringLiteral(v) => {
+            writeln!(w, "{}string {:?}", indent, v)?;
+        }
         Node::Var(items) => {
             writeln!(w, "{}var {{ {} }}", indent, items.join(" -> "))?;
         }
@@ -94,7 +100,6 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         Node::Dummy => {
             writeln!(w, "{}dummy", indent)?;
         }
-
         Node::BinOp(bin_op, node_left, node_right) => {
             writeln!(w, "{}binop '{}'", indent.clone(), bin_op)?;
             writeln!(w, "{}left:", indent.clone())?;
@@ -102,17 +107,50 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
             writeln!(w, "{}right:", indent.clone())?;
             dump_node(node_right, w, indent.clone() + DEBUG_INDENT)?;
         }
-
         Node::UnOp(un_op, node) => {
             writeln!(w, "{}unop '{}':", indent.clone(), un_op)?;
             dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
         }
-
         Node::DummyVec(nodes) => {
             writeln!(w, "{}dummyvec", indent.clone())?;
             for (i, node) in nodes.iter().enumerate() {
                 writeln!(w, "{}[{}]:", indent.clone(), i)?;
                 dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+            }
+        }
+        Node::Assign(items, node) => {
+            writeln!(w, "{}assign to {{ {} }}:", indent, items.join(" -> "))?;
+            dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+        }
+        Node::If(expr, then_block, elifs, else_block) => {
+            writeln!(w, "{}if", indent)?;
+            writeln!(w, "{}expr:", indent)?;
+            dump_node(expr, w, indent.clone() + DEBUG_INDENT)?;
+
+            writeln!(w, "{}then:", indent)?;
+            for (i, node) in then_block.iter().enumerate() {
+                writeln!(w, "{}[{}]:", indent.clone(), i)?;
+                dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+            }
+
+            if !elifs.is_empty() {
+                for (i, (expr, block)) in elifs.iter().enumerate() {
+                    writeln!(w, "{}elif[{}]", indent.clone(), i)?;
+                    writeln!(w, "{}expr:", indent)?;
+                    dump_node(expr, w, indent.clone() + DEBUG_INDENT)?;
+                    for (i, node) in block.iter().enumerate() {
+                        writeln!(w, "{}[{}]:", indent.clone(), i)?;
+                        dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+                    }
+                }
+            }
+
+            if !else_block.is_empty() {
+                writeln!(w, "{}else:", indent)?;
+                for (i, node) in else_block.iter().enumerate() {
+                    writeln!(w, "{}[{}]:", indent.clone(), i)?;
+                    dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+                }
             }
         }
     }

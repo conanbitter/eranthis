@@ -49,6 +49,12 @@ pomelo! {
     %type var Vec<String>;
     %type fncall Node;
     %type param_list Vec<Node>;
+    %type assign Node;
+    %type block Vec<Node>;
+    %type ifstmt Node;
+    %type else_branch Vec<Node>;
+    %type elif_branch (Node, Vec<Node>);
+    %type elif_list Vec<(Node, Vec<Node>)>;
 
 
     %left KwOr;
@@ -64,10 +70,23 @@ pomelo! {
     stmt_list ::= stmt_list(mut sl) stmt(s) { sl.push(s); sl };
     stmt_list ::= stmt(s) { vec![s] };
 
-    stmt ::= expr NewLine;
+    stmt ::= assign NewLine;
+    stmt ::= fncall NewLine;
+    stmt ::= ifstmt;
+
+    assign ::= var(v) Assign expr(e) { Node::Assign(v, Box::new(e)) };
+
+    ifstmt ::= KwIf expr(e) KwThen expr(te) NewLine { Node::If(Box::new(e), vec![te], vec![], vec![]) };
+    ifstmt ::= KwIf expr(e) NewLine block(b) elif_list?(el) else_branch?(eb) { Node::If(Box::new(e), b, el.unwrap_or(vec![]), eb.unwrap_or(vec![])) };
+
+    else_branch ::= KwElse NewLine block;
+    elif_branch ::= KwElif expr(e) NewLine block(b) { (e, b) };
+    elif_list ::= elif_list(mut el) elif_branch(eb) { el.push(eb); el };
+    elif_list ::= elif_branch(el) { vec![el] };
 
     expr ::= Int(v)   { Node::IntLiteral(v) };
     expr ::= Float(v) { Node::FloatLiteral(v) };
+    expr ::= Str(v)   { Node::StringLiteral(v) };
     expr ::= var(v)   { Node::Var(v) };
     expr ::= LParen expr RParen;
     expr ::= fncall;
@@ -95,6 +114,8 @@ pomelo! {
     param_list ::= param_list(mut pl) Comma expr(e) { pl.push(e); pl };
     param_list ::= expr(e) { vec![e] };
     param_list ::= { vec![] };
+
+    block ::= Indent stmt_list Dedent;
 
     root ::= NewLine { Node::Dummy };
     root ::= Indent { Node::Dummy };

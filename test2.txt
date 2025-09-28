@@ -1,4 +1,13 @@
-3.4+7+6*  7 and 6%4>=6
-(7+6)*5
-fd(4)+fd.trt(fg,56,t and r)
-sde.jgy.frwe
+a = 4%6
+f.t(a)
+if a==b then print("a={}",a)
+b = 4
+if true
+    if dert
+        f(x)
+    elif el1
+        d()
+    elif el2
+        e()
+else
+    el()
