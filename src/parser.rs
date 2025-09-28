@@ -134,6 +134,7 @@ pomelo! {
     param_list ::= { vec![] };
 
     block ::= Indent stmt_list Dedent;
+    block ::= Indent KwPass NewLine Dedent { vec![] };
 
     //root ::= NewLine { Node::Dummy };
     //root ::= Indent { Node::Dummy };
