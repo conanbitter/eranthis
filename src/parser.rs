@@ -55,6 +55,7 @@ pomelo! {
     %type else_branch Vec<Node>;
     %type elif_branch (Node, Vec<Node>);
     %type elif_list Vec<(Node, Vec<Node>)>;
+    %type boolval bool;
 
 
     %left KwOr;
@@ -84,10 +85,11 @@ pomelo! {
     elif_list ::= elif_list(mut el) elif_branch(eb) { el.push(eb); el };
     elif_list ::= elif_branch(el) { vec![el] };
 
-    expr ::= Int(v)   { Node::IntLiteral(v) };
-    expr ::= Float(v) { Node::FloatLiteral(v) };
-    expr ::= Str(v)   { Node::StringLiteral(v) };
-    expr ::= var(v)   { Node::Var(v) };
+    expr ::= Int(v)     { Node::IntLiteral(v) };
+    expr ::= Float(v)   { Node::FloatLiteral(v) };
+    expr ::= Str(v)     { Node::StringLiteral(v) };
+    expr ::= boolval(v) { Node::BoolLiteral(v)};
+    expr ::= var(v)     { Node::Var(v) };
     expr ::= LParen expr RParen;
     expr ::= fncall;
     expr ::= expr(l) Add         expr(r) { Node::BinOp( BinOp::Add,      Box::new(l), Box::new(r) ) };
@@ -105,6 +107,9 @@ pomelo! {
     expr ::= expr(l) KwOr        expr(r) { Node::BinOp( BinOp::Or,       Box::new(l), Box::new(r) ) };
     expr ::= KwNot expr(e)       { Node::UnOp( UnOp::Not, Box::new(e) ) };
     expr ::= Sub expr(e) [KwNot] { Node::UnOp( UnOp::Neg, Box::new(e) ) };
+
+    boolval ::= KwTrue  { true }
+    boolval ::= KwFalse { false}
 
     var ::= var(mut v) Period Name(n) { v.push(n); v };
     var ::= Name(n) { vec![n] };

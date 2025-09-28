@@ -1,7 +1,7 @@
 a = 4%6
 f.t(a)
 if a==b then print("a={}",a)
-b = 4
+b = true or false
 if true
     if dert
         f(x)

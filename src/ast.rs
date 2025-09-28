@@ -3,6 +3,7 @@ pub enum Node {
     IntLiteral(i64),
     FloatLiteral(f64),
     StringLiteral(String),
+    BoolLiteral(bool),
     BinOp(BinOp, Box<Node>, Box<Node>),
     UnOp(UnOp, Box<Node>),
     Var(Vec<String>),
@@ -86,6 +87,9 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         }
         Node::StringLiteral(v) => {
             writeln!(w, "{}string {:?}", indent, v)?;
+        }
+        Node::BoolLiteral(v) => {
+            writeln!(w, "{}bool {}", indent, if *v { "true" } else { "false" })?;
         }
         Node::Var(items) => {
             writeln!(w, "{}var {{ {} }}", indent, items.join(" -> "))?;
