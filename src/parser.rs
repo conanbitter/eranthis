@@ -96,6 +96,7 @@ pomelo! {
 
     forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) NewLine block(b) { Node::For(v,Box::new(es), Box::new(ef), s, b) };
     step_variant ::= KwStep expr(e) { Box::new(e) };
+    forstmt ::= KwFor var(v) KwIn expr(ea) NewLine block(b) { Node::ForIn(v,Box::new(ea), b) };
 
     expr ::= Int(v)     { Node::IntLiteral(v) };
     expr ::= Float(v)   { Node::FloatLiteral(v) };
@@ -184,6 +185,14 @@ pomelo! {
     //root ::= RParen { Node::Dummy };
     root ::= LSqBracket { Node::Dummy };
     root ::= RSqBracket { Node::Dummy };
+
+    root ::= KwPass { Node::Dummy };
+    root ::= KwInt { Node::Dummy };
+    root ::= KwFloat { Node::Dummy };
+    root ::= KwString { Node::Dummy };
+    root ::= KwFixed { Node::Dummy };
+    root ::= KwByte { Node::Dummy };
+    root ::= KwBool { Node::Dummy };
 }
 
 pub use parser::Parser;
