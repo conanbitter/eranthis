@@ -72,6 +72,7 @@ pomelo! {
     %type type_convert Node;
     %type returnstmt Node;
     %type whilestmt Node;
+    %type subscript Node;
 
 
     %left KwOr;
@@ -140,6 +141,7 @@ pomelo! {
     expr ::= LParen expr RParen;
     expr ::= fncall;
     expr ::= type_convert;
+    expr ::= subscript;
     expr ::= expr(l) Add         expr(r) { Node::BinOp( BinOp::Add,      Box::new(l), Box::new(r) ) };
     expr ::= expr(l) Sub         expr(r) { Node::BinOp( BinOp::Sub,      Box::new(l), Box::new(r) ) };
     expr ::= expr(l) Mul         expr(r) { Node::BinOp( BinOp::Mul,      Box::new(l), Box::new(r) ) };
@@ -177,6 +179,8 @@ pomelo! {
 
     type_convert ::= basic_type(t) LParen expr(e) RParen { Node::TypeConvert(Box::new(e), t) };
 
+    subscript ::= var(v) LSqBracket expr(e) RSqBracket { Node::Subscript(v, Box::new(e)) };
+
     block ::= Indent stmt_list Dedent;
     block ::= Indent KwPass NewLine Dedent { vec![] };
 
@@ -194,10 +198,6 @@ pomelo! {
 
     // Reserved for static members
     root ::= Colon { Node::Dummy };
-
-    // Reserved for arrays
-    root ::= LSqBracket { Node::Dummy };
-    root ::= RSqBracket { Node::Dummy };
 }
 
 pub use parser::Parser;

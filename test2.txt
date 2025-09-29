@@ -1,5 +1,5 @@
 a += 4%6
-f.t(a)
+f.t(a[56+d])
 if a==b then print("a={}",a)
 b = true or false
 var a int

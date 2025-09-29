@@ -1,25 +1,42 @@
+type Block = Vec<Node>;
+type Name = Vec<String>;
+type ExprBox = Box<Node>;
+type Expr = Node;
+
 #[derive(Debug)]
 pub enum Node {
     IntLiteral(i64),
     FloatLiteral(f64),
     StringLiteral(String),
     BoolLiteral(bool),
-    BinOp(BinOp, Box<Node>, Box<Node>),
-    UnOp(UnOp, Box<Node>),
-    Var(Vec<String>),
-    FnCall(Vec<String>, Vec<Node>),
-    Assign(Vec<String>, Box<Node>),
-    OpAssign(Vec<String>, BinOp, Box<Node>),
-    If(Box<Node>, Vec<Node>, Vec<(Node, Vec<Node>)>, Vec<Node>), // if (expr) (then block) (elifs blocks) (else block)
-    For(Vec<String>, Box<Node>, Box<Node>, Option<Box<Node>>, Vec<Node>), // for (var) (start) (stop) (step) (block)
-    ForIn(Vec<String>, Box<Node>, Vec<Node>),                    // for (var) in (array) (block)
-    VarDecl(Vec<(String, DataType, Option<Node>)>),              // var (name) (type) [=(expr)]
-    ConstDecl(Vec<(String, DataType, Node)>),                    // const (name) (type) =(expr)
-    TypeConvert(Box<Node>, DataType),
-    While(Box<Node>, Vec<Node>),
-    Return(Box<Node>),
+    BinOp(BinOp, ExprBox, ExprBox),
+    UnOp(UnOp, ExprBox),
+    Var(Name),
+    FnCall(Name, /*params*/ Vec<Expr>),
+    Assign(Name, ExprBox),
+    OpAssign(Name, BinOp, ExprBox),
+    If(
+        /*cond*/ ExprBox,
+        /*then*/ Block,
+        /*elifs*/ Vec<(/*cond*/ Node, Block)>,
+        /*else*/ Block,
+    ),
+    For(
+        Name,
+        /*start*/ ExprBox,
+        /*stop*/ ExprBox,
+        /*step*/ Option<ExprBox>,
+        Block,
+    ),
+    ForIn(Name, /*array*/ ExprBox, Block),
+    VarDecl(Vec<(/*name*/ String, DataType, Option<Expr>)>),
+    ConstDecl(Vec<(/*name*/ String, DataType, Expr)>),
+    TypeConvert(ExprBox, DataType),
+    While(ExprBox, Block),
+    Return(ExprBox),
+    Subscript(Name, /*index*/ ExprBox),
     Dummy,
-    DummyVec(Vec<Node>),
+    DummyVec(Block),
 }
 
 #[derive(Debug)]
@@ -246,6 +263,10 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         Node::Return(expr) => {
             writeln!(w, "{}return:", indent)?;
             dump_node(expr, w, indent.clone() + DEBUG_INDENT)?;
+        }
+        Node::Subscript(name, index) => {
+            writeln!(w, "{}array {{{}}} index:", indent, name.join(" -> "))?;
+            dump_node(index, w, indent.clone() + DEBUG_INDENT)?;
         }
     }
     Ok(())
