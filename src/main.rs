@@ -2,11 +2,13 @@ use std::{collections::VecDeque, fs, path::Path};
 
 use crate::{
     ast::Node,
+    bytecode::FrameAllocator,
     lexer::{FilePos, Lexer, LexerResult},
     parser::{Parser, Token},
 };
 
 mod ast;
+mod bytecode;
 mod lexer;
 mod parser;
 
@@ -56,8 +58,26 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Node> {
 }
 
 fn main() -> anyhow::Result<()> {
-    let root = parse_file("test2.txt")?;
-    ast::debug_dump(&root, "test2_result.txt")?;
+    //let root = parse_file("test2.txt")?;
+    //ast::debug_dump(&root, "test2_result.txt")?;
     //println!("{:?}", root);
+    let mut frame = FrameAllocator::new();
+    frame.alloc(10); // 1
+    let f1 = frame.alloc(20); // 2
+    frame.alloc(10); // 3
+    let f2 = frame.alloc(10); // 4
+    frame.alloc(10); // 5
+    frame.free(f1); // 6
+    frame.free(f2); // 7
+    frame.alloc(10); // 8
+    frame.alloc(20); // 9
+
+    frame.calculate();
+
+    println!("Frame size {}", frame.get_frame_size());
+    for i in 0..7 {
+        println!("Offset {} = {}", i, frame.get_offset(i));
+    }
+
     Ok(())
 }
