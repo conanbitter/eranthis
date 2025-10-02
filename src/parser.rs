@@ -47,6 +47,8 @@ pomelo! {
     %type root Node;
     %type stmt_list Vec<Node>;
     %type stmt Node;
+    %type stmt_oneline Node;
+    %type stmt_multiline Node;
     %type expr Node;
     %type var Vec<String>;
     %type fncall Node;
@@ -88,14 +90,18 @@ pomelo! {
     stmt_list ::= stmt_list(mut sl) stmt(s) { sl.push(s); sl };
     stmt_list ::= stmt(s) { vec![s] };
 
-    stmt ::= assign NewLine;
-    stmt ::= fncall NewLine;
-    stmt ::= returnstmt NewLine;
-    stmt ::= ifstmt;
-    stmt ::= forstmt;
-    stmt ::= vardecl;
-    stmt ::= constdecl; // temporary
-    stmt ::= whilestmt;
+    stmt ::= stmt_oneline NewLine;
+    stmt ::= stmt_multiline;
+
+    stmt_oneline ::= assign;
+    stmt_oneline ::= fncall;
+    stmt_oneline ::= returnstmt;
+
+    stmt_multiline ::= ifstmt;
+    stmt_multiline ::= forstmt;
+    stmt_multiline ::= vardecl;
+    stmt_multiline ::= constdecl; // temporary
+    stmt_multiline ::= whilestmt;
 
     assign ::= var(v) Assign expr(e) { Node::Assign(v, Box::new(e)) };
     assign ::= var(v) opassign(o) expr(e) { Node::OpAssign(v, o, Box::new(e)) };
@@ -105,7 +111,7 @@ pomelo! {
     opassign ::= DivAssign { BinOp::Div };
     opassign ::= ModAssign { BinOp::Mod };
 
-    ifstmt ::= KwIf expr(e) KwThen expr(te) NewLine { Node::If(Box::new(e), vec![te], vec![], vec![]) };
+    ifstmt ::= KwIf expr(e) KwThen stmt_oneline(so) NewLine { Node::If(Box::new(e), vec![so], vec![], vec![]) };
     ifstmt ::= KwIf expr(e) NewLine block(b) elif_list?(el) else_branch?(eb) { Node::If(Box::new(e), b, el.unwrap_or(vec![]), eb.unwrap_or(vec![])) };
     else_branch ::= KwElse NewLine block;
     elif_branch ::= KwElif expr(e) NewLine block(b) { (e, b) };
@@ -115,6 +121,8 @@ pomelo! {
     forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) NewLine block(b) { Node::For(v,Box::new(es), Box::new(ef), s, b) };
     step_variant ::= KwStep expr(e) { Box::new(e) };
     forstmt ::= KwFor var(v) KwIn expr(ea) NewLine block(b) { Node::ForIn(v,Box::new(ea), b) };
+    forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) KwDo stmt_oneline(so) NewLine  { Node::For(v,Box::new(es), Box::new(ef), s, vec![so]) };
+    forstmt ::= KwFor var(v) KwIn expr(ea) KwDo stmt_oneline(so) NewLine { Node::ForIn(v,Box::new(ea), vec![so]) };
 
     vardecl ::= KwVar single_vardecl(sv) NewLine { Node::VarDecl(vec![sv]) };
     vardecl ::= KwVar NewLine Indent vardecl_list(dl) NewLine Dedent { Node::VarDecl(dl) };
@@ -132,6 +140,7 @@ pomelo! {
     returnstmt ::= KwReturn expr(e) { Node::Return(Box::new(e)) };
 
     whilestmt ::= KwWhile expr(e) NewLine block(b) { Node::While(Box::new(e), b) };
+    whilestmt ::= KwWhile expr(e) KwDo stmt_oneline(so) NewLine { Node::While(Box::new(e), vec![so]) };
 
     expr ::= Int(v)     { Node::IntLiteral(v) };
     expr ::= Float(v)   { Node::FloatLiteral(v) };
@@ -266,6 +275,7 @@ impl Display for Token {
             Token::Colon => write!(f, "':'"),
             Token::LSqBracket => write!(f, "'['"),
             Token::RSqBracket => write!(f, "']'"),
+            Token::KwDo => write!(f, "'do'"),
         }
     }
 }
