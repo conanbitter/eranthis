@@ -1,4 +1,4 @@
-type Block = Vec<Node>;
+type Block = Vec<CodeNode>;
 type Name = Vec<String>;
 type ExprBoxed = Box<ExprNode>;
 
@@ -39,7 +39,7 @@ pub struct ExprNode {
 }
 
 #[derive(Debug)]
-pub enum Node {
+pub enum CodeNode {
     FnCall(Name, /*params*/ Vec<ExprNode>),
     Assign(Name, ExprNode),
     OpAssign(Name, BinOp, ExprNode),
@@ -58,11 +58,20 @@ pub enum Node {
     ),
     ForIn(Name, /*array*/ ExprNode, Block),
     VarDecl(Vec<(/*name*/ String, DataType, Option<ExprNode>)>),
-    ConstDecl(Vec<(/*name*/ String, DataType, ExprNode)>),
     While(ExprNode, Block),
     Return(ExprNode),
+}
+
+pub enum ModNode {
+    VarDecl(Vec<(/*name*/ String, DataType, Option<ExprNode>)>),
+    ConstDecl(Vec<(/*name*/ String, DataType, ExprNode)>),
+    FuncDecl(
+        /*name*/ String,
+        /*params*/ Vec<(String, DataType)>,
+        /*return type*/ Option<DataType>,
+        /* code */ Block,
+    ),
     Dummy,
-    DummyVec(Block),
 }
 
 #[derive(Debug)]
@@ -280,34 +289,24 @@ fn dump_expr(node: &ExprNode, w: &mut BufWriter<File>, indent: String) -> anyhow
     Ok(())
 }
 
-fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Result<()> {
+fn dump_codenode(node: &CodeNode, w: &mut BufWriter<File>, indent: String) -> anyhow::Result<()> {
     match node {
-        Node::FnCall(items, params) => {
+        CodeNode::FnCall(items, params) => {
             writeln!(w, "{}func {{ {} }}", indent, items.join(" -> "))?;
             for (i, node) in params.iter().enumerate() {
                 writeln!(w, "{}param[{}]:", indent.clone(), i)?;
                 dump_expr(node, w, indent.clone() + DEBUG_INDENT)?;
             }
         }
-        Node::Dummy => {
-            writeln!(w, "{}dummy", indent)?;
-        }
-        Node::DummyVec(nodes) => {
-            writeln!(w, "{}dummyvec", indent.clone())?;
-            for (i, node) in nodes.iter().enumerate() {
-                writeln!(w, "{}[{}]:", indent.clone(), i)?;
-                dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
-            }
-        }
-        Node::Assign(items, node) => {
+        CodeNode::Assign(items, node) => {
             writeln!(w, "{}assign to {{ {} }}:", indent, items.join(" -> "))?;
             dump_expr(node, w, indent.clone() + DEBUG_INDENT)?;
         }
-        Node::OpAssign(items, op, node) => {
+        CodeNode::OpAssign(items, op, node) => {
             writeln!(w, "{}assign and {} to {{ {} }}:", indent, op, items.join(" -> "))?;
             dump_expr(node, w, indent.clone() + DEBUG_INDENT)?;
         }
-        Node::If(expr, then_block, elifs, else_block) => {
+        CodeNode::If(expr, then_block, elifs, else_block) => {
             writeln!(w, "{}if", indent)?;
             writeln!(w, "{}expr:", indent)?;
             dump_expr(expr, w, indent.clone() + DEBUG_INDENT)?;
@@ -315,7 +314,7 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
             writeln!(w, "{}then:", indent)?;
             for (i, node) in then_block.iter().enumerate() {
                 writeln!(w, "{}[{}]:", indent.clone(), i)?;
-                dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+                dump_codenode(node, w, indent.clone() + DEBUG_INDENT)?;
             }
 
             if !elifs.is_empty() {
@@ -325,7 +324,7 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
                     dump_expr(expr, w, indent.clone() + DEBUG_INDENT)?;
                     for (i, node) in block.iter().enumerate() {
                         writeln!(w, "{}[{}]:", indent.clone(), i)?;
-                        dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+                        dump_codenode(node, w, indent.clone() + DEBUG_INDENT)?;
                     }
                 }
             }
@@ -334,11 +333,11 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
                 writeln!(w, "{}else:", indent)?;
                 for (i, node) in else_block.iter().enumerate() {
                     writeln!(w, "{}[{}]:", indent.clone(), i)?;
-                    dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+                    dump_codenode(node, w, indent.clone() + DEBUG_INDENT)?;
                 }
             }
         }
-        Node::For(var, start, stop, step, block) => {
+        CodeNode::For(var, start, stop, step, block) => {
             writeln!(w, "{}for {{{}}}", indent, var.join(" -> "))?;
             writeln!(w, "{}start expr:", indent)?;
             dump_expr(start, w, indent.clone() + DEBUG_INDENT)?;
@@ -350,18 +349,18 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
             }
             for (i, node) in block.iter().enumerate() {
                 writeln!(w, "{}[{}]:", indent.clone(), i)?;
-                dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+                dump_codenode(node, w, indent.clone() + DEBUG_INDENT)?;
             }
         }
-        Node::ForIn(var, array, block) => {
+        CodeNode::ForIn(var, array, block) => {
             writeln!(w, "{}for {{{}}} in:", indent, var.join(" -> "))?;
             dump_expr(array, w, indent.clone() + DEBUG_INDENT)?;
             for (i, node) in block.iter().enumerate() {
                 writeln!(w, "{}[{}]:", indent.clone(), i)?;
-                dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+                dump_codenode(node, w, indent.clone() + DEBUG_INDENT)?;
             }
         }
-        Node::VarDecl(vars) => {
+        CodeNode::VarDecl(vars) => {
             for (name, vartype, init) in vars {
                 if let Some(node) = init {
                     writeln!(w, "{}var {} type {} init:", indent, name, vartype)?;
@@ -371,22 +370,16 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
                 }
             }
         }
-        Node::ConstDecl(vars) => {
-            for (name, consttype, init) in vars {
-                writeln!(w, "{}const {} type {}:", indent, name, consttype)?;
-                dump_expr(init, w, indent.clone() + DEBUG_INDENT)?;
-            }
-        }
-        Node::While(cond, block) => {
+        CodeNode::While(cond, block) => {
             writeln!(w, "{}while", indent)?;
             writeln!(w, "{}condition:", indent)?;
             dump_expr(cond, w, indent.clone() + DEBUG_INDENT)?;
             for (i, node) in block.iter().enumerate() {
                 writeln!(w, "{}[{}]:", indent.clone(), i)?;
-                dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+                dump_codenode(node, w, indent.clone() + DEBUG_INDENT)?;
             }
         }
-        Node::Return(expr) => {
+        CodeNode::Return(expr) => {
             writeln!(w, "{}return:", indent)?;
             dump_expr(expr, w, indent.clone() + DEBUG_INDENT)?;
         }
@@ -394,11 +387,53 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
     Ok(())
 }
 
+fn dump_modnode(node: &ModNode, w: &mut BufWriter<File>) -> anyhow::Result<()> {
+    match node {
+        ModNode::Dummy => {
+            writeln!(w, "\n#dummy")?;
+        }
+        ModNode::VarDecl(vars) => {
+            for (name, vartype, init) in vars {
+                if let Some(node) = init {
+                    writeln!(w, "\n#vardecl {} type {} init:", name, vartype)?;
+                    dump_expr(node, w, String::from(DEBUG_INDENT))?;
+                } else {
+                    writeln!(w, "\n#vardecl {} type {}", name, vartype)?;
+                }
+            }
+        }
+        ModNode::ConstDecl(vars) => {
+            for (name, consttype, init) in vars {
+                writeln!(w, "\n#constdecl {} type {}:", name, consttype)?;
+                dump_expr(init, w, String::from(DEBUG_INDENT))?;
+            }
+        }
+        ModNode::FuncDecl(name, params, return_type, code) => {
+            write!(w, "\n#fndecl {} ( ", name)?;
+            for (param_name, param_type) in params {
+                write!(w, "{}:{} ", param_name, param_type)?;
+            }
+            write!(w, ")")?;
+            if let Some(return_type) = return_type {
+                write!(w, " -> {}", return_type)?;
+            }
+            writeln!(w, ":")?;
+            for (i, node) in code.iter().enumerate() {
+                writeln!(w, "{}[{}]:", String::from(DEBUG_INDENT), i)?;
+                dump_codenode(node, w, String::from(DEBUG_INDENT) + DEBUG_INDENT)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 #[allow(dead_code)]
-pub fn debug_dump<P: AsRef<Path>>(root: &Node, output_file: P) -> anyhow::Result<()> {
+pub fn debug_dump<P: AsRef<Path>>(root: &Vec<ModNode>, output_file: P) -> anyhow::Result<()> {
     let out = File::create(output_file)?;
     let mut wr = BufWriter::new(out);
-    dump_node(root, &mut wr, String::from(""))?;
+    for node in root {
+        dump_modnode(node, &mut wr)?;
+    }
     wr.flush()?;
     Ok(())
 }

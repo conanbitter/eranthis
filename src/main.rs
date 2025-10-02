@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, fs, path::Path};
 
 use crate::{
-    ast::Node,
+    ast::ModNode,
     bytecode::FrameAllocator,
     lexer::{FilePos, Lexer, LexerResult},
     parser::{Parser, Token},
@@ -12,7 +12,7 @@ mod bytecode;
 mod lexer;
 mod parser;
 
-fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Node> {
+fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
     let source = fs::read_to_string(source_file)?;
 
     let mut lex = Lexer::new(&source);
