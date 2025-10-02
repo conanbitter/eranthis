@@ -49,32 +49,33 @@ pomelo! {
     %type stmt Node;
     %type stmt_oneline Node;
     %type stmt_multiline Node;
-    %type expr Node;
+    %type expr ExprNode;
     %type var Vec<String>;
     %type fncall Node;
-    %type param_list Vec<Node>;
+    %type fncall_expr ExprNode;
+    %type param_list Vec<ExprNode>;
     %type assign Node;
     %type block Vec<Node>;
     %type ifstmt Node;
     %type else_branch Vec<Node>;
-    %type elif_branch (Node, Vec<Node>);
-    %type elif_list Vec<(Node, Vec<Node>)>;
+    %type elif_branch (ExprNode, Vec<Node>);
+    %type elif_list Vec<(ExprNode, Vec<Node>)>;
     %type boolval bool;
     %type forstmt Node;
-    %type step_variant Box<Node>;
+    %type step_variant ExprNode;
     %type opassign BinOp;
     %type vardecl Node;
-    %type single_vardecl (String, DataType, Option<Node>);
+    %type single_vardecl (String, DataType, Option<ExprNode>);
     %type basic_type DataType;
-    %type opt_assign Node;
-    %type vardecl_list Vec<(String, DataType, Option<Node>)>;
+    %type opt_assign ExprNode;
+    %type vardecl_list Vec<(String, DataType, Option<ExprNode>)>;
     %type constdecl Node;
-    %type single_constdecl (String, DataType, Node);
-    %type constdecl_list Vec<(String, DataType, Node)>;
-    %type type_convert Node;
+    %type single_constdecl (String, DataType, ExprNode);
+    %type constdecl_list Vec<(String, DataType, ExprNode)>;
+    %type type_convert ExprNode;
     %type returnstmt Node;
     %type whilestmt Node;
-    %type subscript Node;
+    %type subscript ExprNode;
 
 
     %left KwOr;
@@ -103,26 +104,26 @@ pomelo! {
     stmt_multiline ::= constdecl; // temporary
     stmt_multiline ::= whilestmt;
 
-    assign ::= var(v) Assign expr(e) { Node::Assign(v, Box::new(e)) };
-    assign ::= var(v) opassign(o) expr(e) { Node::OpAssign(v, o, Box::new(e)) };
+    assign ::= var(v) Assign expr(e) { Node::Assign(v, e) };
+    assign ::= var(v) opassign(o) expr(e) { Node::OpAssign(v, o, e) };
     opassign ::= AddAssign { BinOp::Add };
     opassign ::= SubAssign { BinOp::Sub };
     opassign ::= MulAssign { BinOp::Mul };
     opassign ::= DivAssign { BinOp::Div };
     opassign ::= ModAssign { BinOp::Mod };
 
-    ifstmt ::= KwIf expr(e) KwThen stmt_oneline(so) NewLine { Node::If(Box::new(e), vec![so], vec![], vec![]) };
-    ifstmt ::= KwIf expr(e) NewLine block(b) elif_list?(el) else_branch?(eb) { Node::If(Box::new(e), b, el.unwrap_or(vec![]), eb.unwrap_or(vec![])) };
+    ifstmt ::= KwIf expr(e) KwThen stmt_oneline(so) NewLine { Node::If(e, vec![so], vec![], vec![]) };
+    ifstmt ::= KwIf expr(e) NewLine block(b) elif_list?(el) else_branch?(eb) { Node::If(e, b, el.unwrap_or(vec![]), eb.unwrap_or(vec![])) };
     else_branch ::= KwElse NewLine block;
     elif_branch ::= KwElif expr(e) NewLine block(b) { (e, b) };
     elif_list ::= elif_list(mut el) elif_branch(eb) { el.push(eb); el };
     elif_list ::= elif_branch(el) { vec![el] };
 
-    forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) NewLine block(b) { Node::For(v,Box::new(es), Box::new(ef), s, b) };
-    step_variant ::= KwStep expr(e) { Box::new(e) };
-    forstmt ::= KwFor var(v) KwIn expr(ea) NewLine block(b) { Node::ForIn(v,Box::new(ea), b) };
-    forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) KwDo stmt_oneline(so) NewLine  { Node::For(v,Box::new(es), Box::new(ef), s, vec![so]) };
-    forstmt ::= KwFor var(v) KwIn expr(ea) KwDo stmt_oneline(so) NewLine { Node::ForIn(v,Box::new(ea), vec![so]) };
+    forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) NewLine block(b) { Node::For(v, es, ef, s, b) };
+    step_variant ::= KwStep expr;
+    forstmt ::= KwFor var(v) KwIn expr(ea) NewLine block(b) { Node::ForIn(v,ea, b) };
+    forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) KwDo stmt_oneline(so) NewLine  { Node::For(v, es, ef, s, vec![so]) };
+    forstmt ::= KwFor var(v) KwIn expr(ea) KwDo stmt_oneline(so) NewLine { Node::ForIn(v,ea, vec![so]) };
 
     vardecl ::= KwVar single_vardecl(sv) NewLine { Node::VarDecl(vec![sv]) };
     vardecl ::= KwVar NewLine Indent vardecl_list(dl) NewLine Dedent { Node::VarDecl(dl) };
@@ -137,35 +138,35 @@ pomelo! {
     constdecl_list ::= constdecl_list(mut dl) NewLine single_constdecl(d) { dl.push(d); dl };
     constdecl_list ::= single_constdecl(d) { vec![d] };
 
-    returnstmt ::= KwReturn expr(e) { Node::Return(Box::new(e)) };
+    returnstmt ::= KwReturn expr(e) { Node::Return(e) };
 
-    whilestmt ::= KwWhile expr(e) NewLine block(b) { Node::While(Box::new(e), b) };
-    whilestmt ::= KwWhile expr(e) KwDo stmt_oneline(so) NewLine { Node::While(Box::new(e), vec![so]) };
+    whilestmt ::= KwWhile expr(e) NewLine block(b) { Node::While(e, b) };
+    whilestmt ::= KwWhile expr(e) KwDo stmt_oneline(so) NewLine { Node::While(e, vec![so]) };
 
-    expr ::= Int(v)     { Node::IntLiteral(v) };
-    expr ::= Float(v)   { Node::FloatLiteral(v) };
-    expr ::= Str(v)     { Node::StringLiteral(v) };
-    expr ::= boolval(v) { Node::BoolLiteral(v)};
-    expr ::= var(v)     { Node::Var(v) };
+    expr ::= Int(v)     { ExprNode::new(ExprNodeData::IntLiteral(v)) };
+    expr ::= Float(v)   { ExprNode::new(ExprNodeData::FloatLiteral(v)) };
+    expr ::= Str(v)     { ExprNode::new(ExprNodeData::StringLiteral(v)) };
+    expr ::= boolval(v) { ExprNode::new(ExprNodeData::BoolLiteral(v)) };
+    expr ::= var(v)     { ExprNode::new(ExprNodeData::Var(v)) };
     expr ::= LParen expr RParen;
-    expr ::= fncall;
+    expr ::= fncall_expr;
     expr ::= type_convert;
     expr ::= subscript;
-    expr ::= expr(l) Add         expr(r) { Node::BinOp( BinOp::Add,      Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) Sub         expr(r) { Node::BinOp( BinOp::Sub,      Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) Mul         expr(r) { Node::BinOp( BinOp::Mul,      Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) Div         expr(r) { Node::BinOp( BinOp::Div,      Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) Mod         expr(r) { Node::BinOp( BinOp::Mod,      Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) Less        expr(r) { Node::BinOp( BinOp::Less,     Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) LessOrEq    expr(r) { Node::BinOp( BinOp::LessEq,   Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) Greater     expr(r) { Node::BinOp( BinOp::Greater,  Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) GreaterOrEq expr(r) { Node::BinOp( BinOp::GreaterEq,Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) Eq          expr(r) { Node::BinOp( BinOp::Eq,       Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) NotEq       expr(r) { Node::BinOp( BinOp::NotEq,    Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) KwAnd       expr(r) { Node::BinOp( BinOp::And,      Box::new(l), Box::new(r) ) };
-    expr ::= expr(l) KwOr        expr(r) { Node::BinOp( BinOp::Or,       Box::new(l), Box::new(r) ) };
-    expr ::= KwNot expr(e)       { Node::UnOp( UnOp::Not, Box::new(e) ) };
-    expr ::= Sub expr(e) [KwNot] { Node::UnOp( UnOp::Neg, Box::new(e) ) };
+    expr ::= expr(l) Add         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Add,      Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) Sub         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Sub,      Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) Mul         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Mul,      Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) Div         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Div,      Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) Mod         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Mod,      Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) Less        expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Less,     Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) LessOrEq    expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::LessEq,   Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) Greater     expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Greater,  Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) GreaterOrEq expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::GreaterEq,Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) Eq          expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Eq,       Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) NotEq       expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::NotEq,    Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) KwAnd       expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::And,      Box::new(l), Box::new(r) )) };
+    expr ::= expr(l) KwOr        expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Or,       Box::new(l), Box::new(r) )) };
+    expr ::= KwNot expr(e)       { ExprNode::new(ExprNodeData::UnOp( UnOp::Not, Box::new(e) )) };
+    expr ::= Sub expr(e) [KwNot] { ExprNode::new(ExprNodeData::UnOp( UnOp::Neg, Box::new(e) )) };
 
     boolval ::= KwTrue  { true };
     boolval ::= KwFalse { false };
@@ -181,14 +182,15 @@ pomelo! {
     var ::= Name(n) { vec![n] };
 
     fncall ::= var(v) LParen param_list(pl) RParen { Node::FnCall(v, pl) };
+    fncall_expr ::= var(v) LParen param_list(pl) RParen { ExprNode::new(ExprNodeData::FnCall(v, pl)) };
 
     param_list ::= param_list(mut pl) Comma expr(e) { pl.push(e); pl };
     param_list ::= expr(e) { vec![e] };
     param_list ::= { vec![] };
 
-    type_convert ::= basic_type(t) LParen expr(e) RParen { Node::TypeConvert(Box::new(e), t) };
+    type_convert ::= basic_type(t) LParen expr(e) RParen { ExprNode::new(ExprNodeData::TypeConvert(Box::new(e), t)) };
 
-    subscript ::= var(v) LSqBracket expr(e) RSqBracket { Node::Subscript(v, Box::new(e)) };
+    subscript ::= var(v) LSqBracket expr(e) RSqBracket { ExprNode::new(ExprNodeData::Subscript(v, Box::new(e))) };
 
     block ::= Indent stmt_list Dedent;
     block ::= Indent KwPass NewLine Dedent { vec![] };

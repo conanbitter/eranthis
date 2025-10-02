@@ -1,40 +1,66 @@
 type Block = Vec<Node>;
 type Name = Vec<String>;
-type ExprBox = Box<Node>;
-type Expr = Node;
+type ExprBoxed = Box<ExprNode>;
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum ExprType {
+    Unknown,
+    IntLiteral,
+    FloatLiteral,
+    StringLiteral,
+    BoolLiteral,
+    Byte,
+    Int,
+    Float,
+    Fixed,
+    String,
+    Bool,
+    //Struct,
+}
 
 #[derive(Debug)]
-pub enum Node {
+pub enum ExprNodeData {
     IntLiteral(i64),
     FloatLiteral(f64),
     StringLiteral(String),
     BoolLiteral(bool),
-    BinOp(BinOp, ExprBox, ExprBox),
-    UnOp(UnOp, ExprBox),
+    BinOp(BinOp, ExprBoxed, ExprBoxed),
+    UnOp(UnOp, ExprBoxed),
     Var(Name),
-    FnCall(Name, /*params*/ Vec<Expr>),
-    Assign(Name, ExprBox),
-    OpAssign(Name, BinOp, ExprBox),
+    FnCall(Name, /*params*/ Vec<ExprNode>),
+    TypeConvert(ExprBoxed, DataType),
+    Subscript(Name, /*index*/ ExprBoxed),
+}
+
+#[derive(Debug)]
+pub struct ExprNode {
+    datatype: ExprType,
+    data: ExprNodeData,
+}
+
+#[derive(Debug)]
+pub enum Node {
+    FnCall(Name, /*params*/ Vec<ExprNode>),
+    Assign(Name, ExprNode),
+    OpAssign(Name, BinOp, ExprNode),
     If(
-        /*cond*/ ExprBox,
+        /*cond*/ ExprNode,
         /*then*/ Block,
-        /*elifs*/ Vec<(/*cond*/ Node, Block)>,
+        /*elifs*/ Vec<(/*cond*/ ExprNode, Block)>,
         /*else*/ Block,
     ),
     For(
         Name,
-        /*start*/ ExprBox,
-        /*stop*/ ExprBox,
-        /*step*/ Option<ExprBox>,
+        /*start*/ ExprNode,
+        /*stop*/ ExprNode,
+        /*step*/ Option<ExprNode>,
         Block,
     ),
-    ForIn(Name, /*array*/ ExprBox, Block),
-    VarDecl(Vec<(/*name*/ String, DataType, Option<Expr>)>),
-    ConstDecl(Vec<(/*name*/ String, DataType, Expr)>),
-    TypeConvert(ExprBox, DataType),
-    While(ExprBox, Block),
-    Return(ExprBox),
-    Subscript(Name, /*index*/ ExprBox),
+    ForIn(Name, /*array*/ ExprNode, Block),
+    VarDecl(Vec<(/*name*/ String, DataType, Option<ExprNode>)>),
+    ConstDecl(Vec<(/*name*/ String, DataType, ExprNode)>),
+    While(ExprNode, Block),
+    Return(ExprNode),
     Dummy,
     DummyVec(Block),
 }
@@ -122,45 +148,149 @@ impl Display for DataType {
     }
 }
 
+fn get_expr_type(data: &ExprNodeData) -> ExprType {
+    match data {
+        ExprNodeData::IntLiteral(_) => ExprType::IntLiteral,
+        ExprNodeData::FloatLiteral(_) => ExprType::FloatLiteral,
+        ExprNodeData::StringLiteral(_) => ExprType::StringLiteral,
+        ExprNodeData::BoolLiteral(_) => ExprType::BoolLiteral,
+        ExprNodeData::BinOp(_, left, right) => {
+            if left.datatype == right.datatype {
+                left.datatype
+            } else if left.datatype == ExprType::IntLiteral {
+                match right.datatype {
+                    ExprType::Byte => ExprType::Byte,
+                    ExprType::Int => ExprType::Int,
+                    ExprType::FloatLiteral => ExprType::FloatLiteral,
+                    _ => ExprType::Unknown,
+                }
+            } else if right.datatype == ExprType::IntLiteral {
+                match left.datatype {
+                    ExprType::Byte => ExprType::Byte,
+                    ExprType::Int => ExprType::Int,
+                    ExprType::FloatLiteral => ExprType::FloatLiteral,
+                    _ => ExprType::Unknown,
+                }
+            } else if left.datatype == ExprType::FloatLiteral {
+                match right.datatype {
+                    ExprType::Float => ExprType::Float,
+                    ExprType::Fixed => ExprType::Fixed,
+                    ExprType::IntLiteral => ExprType::FloatLiteral,
+                    _ => ExprType::Unknown,
+                }
+            } else if right.datatype == ExprType::FloatLiteral {
+                match left.datatype {
+                    ExprType::Float => ExprType::Float,
+                    ExprType::Fixed => ExprType::Fixed,
+                    ExprType::IntLiteral => ExprType::FloatLiteral,
+                    _ => ExprType::Unknown,
+                }
+            } else if (left.datatype == ExprType::StringLiteral && right.datatype == ExprType::String)
+                || (right.datatype == ExprType::StringLiteral && left.datatype == ExprType::String)
+            {
+                ExprType::String
+            } else if (left.datatype == ExprType::BoolLiteral && right.datatype == ExprType::Bool)
+                || (right.datatype == ExprType::BoolLiteral && left.datatype == ExprType::Bool)
+            {
+                ExprType::Bool
+            } else {
+                ExprType::Unknown
+            }
+        }
+        ExprNodeData::UnOp(_, expr_node) => expr_node.datatype,
+        ExprNodeData::Var(_) => ExprType::Unknown,
+        ExprNodeData::FnCall(_, _) => ExprType::Unknown,
+        ExprNodeData::TypeConvert(_, data_type) => match data_type {
+            DataType::Byte => ExprType::Byte,
+            DataType::Int => ExprType::Int,
+            DataType::Float => ExprType::Float,
+            DataType::Fixed => ExprType::Fixed,
+            DataType::String => ExprType::String,
+            DataType::Bool => ExprType::Bool,
+        },
+        ExprNodeData::Subscript(_, _) => ExprType::Unknown,
+    }
+}
+
+impl ExprNode {
+    pub fn new(data: ExprNodeData) -> ExprNode {
+        let datatype = get_expr_type(&data);
+        ExprNode { datatype, data }
+    }
+}
+
 const DEBUG_INDENT: &str = "    ";
+
+fn dump_expr(node: &ExprNode, w: &mut BufWriter<File>, indent: String) -> anyhow::Result<()> {
+    match &node.data {
+        ExprNodeData::IntLiteral(v) => {
+            writeln!(w, "{}({:?}) int {}", indent, node.datatype, v)?;
+        }
+        ExprNodeData::FloatLiteral(v) => {
+            writeln!(w, "{}({:?}) float {}", indent, node.datatype, v)?;
+        }
+        ExprNodeData::StringLiteral(v) => {
+            writeln!(w, "{}({:?}) string {:?}", indent, node.datatype, v)?;
+        }
+        ExprNodeData::BoolLiteral(v) => {
+            writeln!(
+                w,
+                "{}({:?}) bool {}",
+                indent,
+                node.datatype,
+                if *v { "true" } else { "false" }
+            )?;
+        }
+        ExprNodeData::Var(items) => {
+            writeln!(w, "{}({:?}) var {{ {} }}", indent, node.datatype, items.join(" -> "))?;
+        }
+        ExprNodeData::FnCall(items, params) => {
+            writeln!(w, "{}({:?}) func {{ {} }}", indent, node.datatype, items.join(" -> "))?;
+            for (i, node) in params.iter().enumerate() {
+                writeln!(w, "{}param[{}]:", indent.clone(), i)?;
+                dump_expr(node, w, indent.clone() + DEBUG_INDENT)?;
+            }
+        }
+        ExprNodeData::BinOp(bin_op, node_left, node_right) => {
+            writeln!(w, "{}({:?}) binop '{}'", indent.clone(), node.datatype, bin_op)?;
+            writeln!(w, "{}left:", indent.clone())?;
+            dump_expr(node_left, w, indent.clone() + DEBUG_INDENT)?;
+            writeln!(w, "{}right:", indent.clone())?;
+            dump_expr(node_right, w, indent.clone() + DEBUG_INDENT)?;
+        }
+        ExprNodeData::UnOp(un_op, node) => {
+            writeln!(w, "{}({:?}) unop '{}':", indent.clone(), node.datatype, un_op)?;
+            dump_expr(node, w, indent.clone() + DEBUG_INDENT)?;
+        }
+        ExprNodeData::TypeConvert(expr, data_type) => {
+            writeln!(w, "{}({:?}) convert to {} from:", indent, node.datatype, data_type)?;
+            dump_expr(expr, w, indent.clone() + DEBUG_INDENT)?;
+        }
+        ExprNodeData::Subscript(name, index) => {
+            writeln!(
+                w,
+                "{}({:?}) array {{{}}} index:",
+                indent,
+                node.datatype,
+                name.join(" -> ")
+            )?;
+            dump_expr(index, w, indent.clone() + DEBUG_INDENT)?;
+        }
+    }
+    Ok(())
+}
 
 fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Result<()> {
     match node {
-        Node::IntLiteral(v) => {
-            writeln!(w, "{}int {}", indent, v)?;
-        }
-        Node::FloatLiteral(v) => {
-            writeln!(w, "{}float {}", indent, v)?;
-        }
-        Node::StringLiteral(v) => {
-            writeln!(w, "{}string {:?}", indent, v)?;
-        }
-        Node::BoolLiteral(v) => {
-            writeln!(w, "{}bool {}", indent, if *v { "true" } else { "false" })?;
-        }
-        Node::Var(items) => {
-            writeln!(w, "{}var {{ {} }}", indent, items.join(" -> "))?;
-        }
         Node::FnCall(items, params) => {
             writeln!(w, "{}func {{ {} }}", indent, items.join(" -> "))?;
             for (i, node) in params.iter().enumerate() {
                 writeln!(w, "{}param[{}]:", indent.clone(), i)?;
-                dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+                dump_expr(node, w, indent.clone() + DEBUG_INDENT)?;
             }
         }
         Node::Dummy => {
             writeln!(w, "{}dummy", indent)?;
-        }
-        Node::BinOp(bin_op, node_left, node_right) => {
-            writeln!(w, "{}binop '{}'", indent.clone(), bin_op)?;
-            writeln!(w, "{}left:", indent.clone())?;
-            dump_node(node_left, w, indent.clone() + DEBUG_INDENT)?;
-            writeln!(w, "{}right:", indent.clone())?;
-            dump_node(node_right, w, indent.clone() + DEBUG_INDENT)?;
-        }
-        Node::UnOp(un_op, node) => {
-            writeln!(w, "{}unop '{}':", indent.clone(), un_op)?;
-            dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
         }
         Node::DummyVec(nodes) => {
             writeln!(w, "{}dummyvec", indent.clone())?;
@@ -171,16 +301,16 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         }
         Node::Assign(items, node) => {
             writeln!(w, "{}assign to {{ {} }}:", indent, items.join(" -> "))?;
-            dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+            dump_expr(node, w, indent.clone() + DEBUG_INDENT)?;
         }
         Node::OpAssign(items, op, node) => {
             writeln!(w, "{}assign and {} to {{ {} }}:", indent, op, items.join(" -> "))?;
-            dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+            dump_expr(node, w, indent.clone() + DEBUG_INDENT)?;
         }
         Node::If(expr, then_block, elifs, else_block) => {
             writeln!(w, "{}if", indent)?;
             writeln!(w, "{}expr:", indent)?;
-            dump_node(expr, w, indent.clone() + DEBUG_INDENT)?;
+            dump_expr(expr, w, indent.clone() + DEBUG_INDENT)?;
 
             writeln!(w, "{}then:", indent)?;
             for (i, node) in then_block.iter().enumerate() {
@@ -192,7 +322,7 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
                 for (i, (expr, block)) in elifs.iter().enumerate() {
                     writeln!(w, "{}elif[{}]", indent.clone(), i)?;
                     writeln!(w, "{}expr:", indent)?;
-                    dump_node(expr, w, indent.clone() + DEBUG_INDENT)?;
+                    dump_expr(expr, w, indent.clone() + DEBUG_INDENT)?;
                     for (i, node) in block.iter().enumerate() {
                         writeln!(w, "{}[{}]:", indent.clone(), i)?;
                         dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
@@ -211,12 +341,12 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         Node::For(var, start, stop, step, block) => {
             writeln!(w, "{}for {{{}}}", indent, var.join(" -> "))?;
             writeln!(w, "{}start expr:", indent)?;
-            dump_node(start, w, indent.clone() + DEBUG_INDENT)?;
+            dump_expr(start, w, indent.clone() + DEBUG_INDENT)?;
             writeln!(w, "{}stop expr:", indent)?;
-            dump_node(stop, w, indent.clone() + DEBUG_INDENT)?;
+            dump_expr(stop, w, indent.clone() + DEBUG_INDENT)?;
             if let Some(step) = step {
                 writeln!(w, "{}step expr:", indent)?;
-                dump_node(step, w, indent.clone() + DEBUG_INDENT)?;
+                dump_expr(step, w, indent.clone() + DEBUG_INDENT)?;
             }
             for (i, node) in block.iter().enumerate() {
                 writeln!(w, "{}[{}]:", indent.clone(), i)?;
@@ -225,7 +355,7 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         }
         Node::ForIn(var, array, block) => {
             writeln!(w, "{}for {{{}}} in:", indent, var.join(" -> "))?;
-            dump_node(array, w, indent.clone() + DEBUG_INDENT)?;
+            dump_expr(array, w, indent.clone() + DEBUG_INDENT)?;
             for (i, node) in block.iter().enumerate() {
                 writeln!(w, "{}[{}]:", indent.clone(), i)?;
                 dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
@@ -235,7 +365,7 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
             for (name, vartype, init) in vars {
                 if let Some(node) = init {
                     writeln!(w, "{}var {} type {} init:", indent, name, vartype)?;
-                    dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
+                    dump_expr(node, w, indent.clone() + DEBUG_INDENT)?;
                 } else {
                     writeln!(w, "{}var {} type {}", indent, name, vartype)?;
                 }
@@ -244,17 +374,13 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         Node::ConstDecl(vars) => {
             for (name, consttype, init) in vars {
                 writeln!(w, "{}const {} type {}:", indent, name, consttype)?;
-                dump_node(init, w, indent.clone() + DEBUG_INDENT)?;
+                dump_expr(init, w, indent.clone() + DEBUG_INDENT)?;
             }
-        }
-        Node::TypeConvert(expr, data_type) => {
-            writeln!(w, "{}convert to {} from:", indent, data_type)?;
-            dump_node(expr, w, indent.clone() + DEBUG_INDENT)?;
         }
         Node::While(cond, block) => {
             writeln!(w, "{}while", indent)?;
             writeln!(w, "{}condition:", indent)?;
-            dump_node(cond, w, indent.clone() + DEBUG_INDENT)?;
+            dump_expr(cond, w, indent.clone() + DEBUG_INDENT)?;
             for (i, node) in block.iter().enumerate() {
                 writeln!(w, "{}[{}]:", indent.clone(), i)?;
                 dump_node(node, w, indent.clone() + DEBUG_INDENT)?;
@@ -262,11 +388,7 @@ fn dump_node(node: &Node, w: &mut BufWriter<File>, indent: String) -> anyhow::Re
         }
         Node::Return(expr) => {
             writeln!(w, "{}return:", indent)?;
-            dump_node(expr, w, indent.clone() + DEBUG_INDENT)?;
-        }
-        Node::Subscript(name, index) => {
-            writeln!(w, "{}array {{{}}} index:", indent, name.join(" -> "))?;
-            dump_node(index, w, indent.clone() + DEBUG_INDENT)?;
+            dump_expr(expr, w, indent.clone() + DEBUG_INDENT)?;
         }
     }
     Ok(())
