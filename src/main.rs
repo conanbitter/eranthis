@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, fs, path::Path};
 
 use crate::{
-    ast::ModNode,
+    ast::{CodeNodeData, ExprNode, ExprNodeData, ModNode, ModNodeData},
     bytecode::FrameAllocator,
     lexer::{FilePos, Lexer, LexerResult},
     parser::{Parser, Token},
@@ -60,9 +60,39 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
     //Ok(Node::Dummy)
 }
 
+fn collapse_consts(node: &mut ExprNode) {
+    if let ExprNodeData::BinOp(_, left, right) = &mut node.data {
+        collapse_consts(left);
+        collapse_consts(right);
+        if let ExprNodeData::IntLiteral(left_part) = left.data
+            && let ExprNodeData::IntLiteral(right_part) = right.data
+        {
+            *node = ExprNode {
+                datatype: ast::ExprType::IntLiteral,
+                data: ExprNodeData::IntLiteral(left_part + right_part),
+                pos: node.pos,
+            };
+        }
+    }
+}
+
+fn opt_test(root: &mut Vec<ModNode>) {
+    for ModNode { data: item, .. } in root {
+        if let ModNodeData::FuncDecl(_, _, _, block) = item {
+            for stmt in &mut block.stmts {
+                if let CodeNodeData::Assign(_, expr) = &mut stmt.data {
+                    collapse_consts(expr);
+                }
+            }
+        }
+    }
+}
+
 fn main() -> anyhow::Result<()> {
-    let root = parse_file("test2.txt")?;
+    let mut root = parse_file("test2.txt")?;
+    opt_test(&mut root);
     ast::debug_dump(&root, "test2_result.txt")?;
+
     //println!("{:?}", root);
     /*let mut frame = FrameAllocator::new();
     frame.alloc(10); // 1

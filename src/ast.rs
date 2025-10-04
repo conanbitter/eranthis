@@ -33,9 +33,9 @@ pub enum ExprNodeData {
 
 #[derive(Debug)]
 pub struct ExprNode {
-    datatype: ExprType,
-    data: ExprNodeData,
-    pos: FilePos,
+    pub datatype: ExprType,
+    pub data: ExprNodeData,
+    pub pos: FilePos,
 }
 
 #[derive(Debug)]
@@ -65,7 +65,7 @@ pub enum CodeNodeData {
 #[derive(Debug)]
 pub struct CodeNode {
     pos: FilePos,
-    data: CodeNodeData,
+    pub data: CodeNodeData,
 }
 
 #[derive(Debug)]
@@ -87,7 +87,7 @@ pub enum ModNodeData {
 
 pub struct ModNode {
     pos: FilePos,
-    data: ModNodeData,
+    pub data: ModNodeData,
 }
 
 #[derive(Debug)]
