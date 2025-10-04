@@ -21,35 +21,44 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
     let mut indent_stack = VecDeque::new();
     indent_stack.push_front(0u32);
     let mut new_line = false;
+    let last_pos: FilePos;
     loop {
         let LexerResult { token, pos, indent } = lex.next()?;
-        if token == Token::Eof {
-            break;
+        match token {
+            Token::Eof(eofpos) => {
+                last_pos = eofpos;
+                break;
+            }
+            _ => {}
         }
 
         *par.extra_mut() = pos;
 
         if indent > *indent_stack.front().unwrap() {
             indent_stack.push_front(indent);
-            par.parse(Token::Indent)?;
+            par.parse(Token::Indent(pos))?;
         } else {
             while indent < *indent_stack.front().unwrap() {
-                par.parse(Token::Dedent)?;
+                par.parse(Token::Dedent(pos))?;
                 indent_stack.pop_front();
             }
         }
-        new_line = token == Token::NewLine;
+
+        new_line = match token {
+            Token::NewLine(_) => true,
+            _ => false,
+        };
         par.parse(token)?;
     }
 
     if !new_line {
-        par.parse(Token::NewLine)?;
+        par.parse(Token::NewLine(last_pos))?;
     }
 
     while let Some(indent) = indent_stack.pop_front()
         && indent > 0
     {
-        par.parse(Token::Dedent)?;
+        par.parse(Token::Dedent(last_pos))?;
     }
 
     Ok(par.end_of_input()?.0)

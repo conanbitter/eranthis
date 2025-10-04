@@ -1,71 +1,78 @@
 use std::{char, collections::VecDeque, str::Chars};
 
-use phf_macros::phf_map;
-
 use crate::parser::Token;
 
-static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
-    "and"    => Token::KwAnd,
-    "bool"   => Token::KwBool,
-    "byte"   => Token::KwByte,
-    "const"  => Token::KwConst,
-    "do"     => Token::KwDo,
-    "elif"   => Token::KwElif,
-    "else"   => Token::KwElse,
-    "false"  => Token::KwFalse,
-    "fixed"  => Token::KwFixed,
-    "float"  => Token::KwFloat,
-    "for"    => Token::KwFor,
-    "func"   => Token::KwFunc,
-    "if"     => Token::KwIf,
-    "in"     => Token::KwIn,
-    "int"    => Token::KwInt,
-    "not"    => Token::KwNot,
-    "or"     => Token::KwOr,
-    "pass"   => Token::KwPass,
-    "ref"    => Token::KwRef,
-    "return" => Token::KwReturn,
-    "step"   => Token::KwStep,
-    "string" => Token::KwString,
-    "struct" => Token::KwStruct,
-    "then"   => Token::KwThen,
-    "true"   => Token::KwTrue,
-    "to"     => Token::KwTo,
-    "type"   => Token::KwType,
-    "var"    => Token::KwVar,
-    "while"  => Token::KwWhile,
-};
+fn get_keyword(name: &str, pos: FilePos) -> Option<Token> {
+    match name {
+        "and" => Some(Token::KwAnd(pos)),
+        "bool" => Some(Token::KwBool(pos)),
+        "byte" => Some(Token::KwByte(pos)),
+        "const" => Some(Token::KwConst(pos)),
+        "do" => Some(Token::KwDo(pos)),
+        "elif" => Some(Token::KwElif(pos)),
+        "else" => Some(Token::KwElse(pos)),
+        "false" => Some(Token::KwFalse(pos)),
+        "fixed" => Some(Token::KwFixed(pos)),
+        "float" => Some(Token::KwFloat(pos)),
+        "for" => Some(Token::KwFor(pos)),
+        "func" => Some(Token::KwFunc(pos)),
+        "if" => Some(Token::KwIf(pos)),
+        "in" => Some(Token::KwIn(pos)),
+        "int" => Some(Token::KwInt(pos)),
+        "not" => Some(Token::KwNot(pos)),
+        "or" => Some(Token::KwOr(pos)),
+        "pass" => Some(Token::KwPass(pos)),
+        "ref" => Some(Token::KwRef(pos)),
+        "return" => Some(Token::KwReturn(pos)),
+        "step" => Some(Token::KwStep(pos)),
+        "string" => Some(Token::KwString(pos)),
+        "struct" => Some(Token::KwStruct(pos)),
+        "then" => Some(Token::KwThen(pos)),
+        "true" => Some(Token::KwTrue(pos)),
+        "to" => Some(Token::KwTo(pos)),
+        "type" => Some(Token::KwType(pos)),
+        "var" => Some(Token::KwVar(pos)),
+        "while" => Some(Token::KwWhile(pos)),
+        _ => None,
+    }
+}
 
-static SINGLE_CHAR_OPS: phf::Map<char, Token> = phf_map! {
-    '=' => Token::Assign,
-    '>' => Token::Greater,
-    '<' => Token::Less,
-    '+' => Token::Add,
-    '-' => Token::Sub,
-    '*' => Token::Mul,
-    '/' => Token::Div,
-    '%' => Token::Mod,
-    '(' => Token::LParen,
-    ')' => Token::RParen,
-    '[' => Token::LSqBracket,
-    ']' => Token::RSqBracket,
-    ',' => Token::Comma,
-    '.' => Token::Period,
-    ':' => Token::Colon,
-};
+fn get_single_char_op(letter: char, pos: FilePos) -> Option<Token> {
+    match letter {
+        '=' => Some(Token::Assign(pos)),
+        '>' => Some(Token::Greater(pos)),
+        '<' => Some(Token::Less(pos)),
+        '+' => Some(Token::Add(pos)),
+        '-' => Some(Token::Sub(pos)),
+        '*' => Some(Token::Mul(pos)),
+        '/' => Some(Token::Div(pos)),
+        '%' => Some(Token::Mod(pos)),
+        '(' => Some(Token::LParen(pos)),
+        ')' => Some(Token::RParen(pos)),
+        '[' => Some(Token::LSqBracket(pos)),
+        ']' => Some(Token::RSqBracket(pos)),
+        ',' => Some(Token::Comma(pos)),
+        '.' => Some(Token::Period(pos)),
+        ':' => Some(Token::Colon(pos)),
+        _ => None,
+    }
+}
 
-static DOUBLE_CHAR_OPS: phf::Map<char, Token> = phf_map! {
-    '=' => Token::Eq,
-    '>' => Token::GreaterOrEq,
-    '<' => Token::LessOrEq,
-    '+' => Token::AddAssign,
-    '-' => Token::SubAssign,
-    '*' => Token::MulAssign,
-    '/' => Token::DivAssign,
-    '%' => Token::ModAssign,
-};
+fn get_double_char_op(letter: char, pos: FilePos) -> Option<Token> {
+    match letter {
+        '=' => Some(Token::Eq(pos)),
+        '>' => Some(Token::GreaterOrEq(pos)),
+        '<' => Some(Token::LessOrEq(pos)),
+        '+' => Some(Token::AddAssign(pos)),
+        '-' => Some(Token::SubAssign(pos)),
+        '*' => Some(Token::MulAssign(pos)),
+        '/' => Some(Token::DivAssign(pos)),
+        '%' => Some(Token::ModAssign(pos)),
+        _ => None,
+    }
+}
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct FilePos {
     pub line: u32,
     pub col: u32,
@@ -106,12 +113,13 @@ impl<'a> Lexer<'a> {
             self.skip_comments();
         }
 
+        let pos = FilePos {
+            line: self.line,
+            col: self.col - 1,
+        };
         let result = LexerResult {
-            token: Token::Eof,
-            pos: FilePos {
-                line: self.line,
-                col: self.col - 1,
-            },
+            token: Token::Eof(pos),
+            pos,
             indent: self.indent,
         };
 
@@ -124,26 +132,26 @@ impl<'a> Lexer<'a> {
                 }
             }
             Ok(LexerResult {
-                token: Token::NewLine,
+                token: Token::NewLine(pos),
                 ..result
             })
         } else if let Some(is_char) = self.cur_char {
             // Names and keywords
             if is_char.is_ascii_alphabetic() {
                 Ok(LexerResult {
-                    token: self.read_name()?,
+                    token: self.read_name(pos)?,
                     ..result
                 })
             // Number literals (int and float)
             } else if is_char.is_ascii_digit() {
                 Ok(LexerResult {
-                    token: self.read_number()?,
+                    token: self.read_number(pos)?,
                     ..result
                 })
             // String literals
             } else if is_char == '"' {
                 Ok(LexerResult {
-                    token: Token::Str(self.read_str()?),
+                    token: Token::Str((pos, self.read_str()?)),
                     ..result
                 })
             // Not equal operator (special case)
@@ -152,7 +160,7 @@ impl<'a> Lexer<'a> {
                 if self.cur_char == Some('=') {
                     self.forward();
                     Ok(LexerResult {
-                        token: Token::NotEq,
+                        token: Token::NotEq(pos),
                         ..result
                     })
                 } else {
@@ -164,17 +172,17 @@ impl<'a> Lexer<'a> {
                     );
                 }
             // Operators
-            } else if SINGLE_CHAR_OPS.contains_key(&is_char) {
+            } else if get_single_char_op(is_char, FilePos::default()).is_some() {
                 let first = is_char;
                 self.forward();
                 if self.cur_char == Some('=')
-                    && let Some(token) = DOUBLE_CHAR_OPS.get(&first).cloned()
+                    && let Some(token) = get_double_char_op(first, pos)
                 {
                     self.forward();
                     Ok(LexerResult { token, ..result })
                 } else {
                     Ok(LexerResult {
-                        token: SINGLE_CHAR_OPS.get(&first).cloned().unwrap(),
+                        token: get_single_char_op(is_char, pos).unwrap(),
                         ..result
                     })
                 }
@@ -188,7 +196,7 @@ impl<'a> Lexer<'a> {
             }
         } else {
             Ok(LexerResult {
-                token: Token::Eof,
+                token: Token::Eof(pos),
                 ..result
             })
         }
@@ -206,7 +214,7 @@ impl<'a> Lexer<'a> {
 
     fn is_separator(&self) -> bool {
         if let Some(is_char) = self.cur_char {
-            is_char.is_whitespace() || is_char == '!' || SINGLE_CHAR_OPS.contains_key(&is_char)
+            is_char.is_whitespace() || is_char == '!' || get_single_char_op(is_char, FilePos::default()).is_some()
         } else {
             true
         }
@@ -243,7 +251,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn read_name(&mut self) -> anyhow::Result<Token> {
+    fn read_name(&mut self, pos: FilePos) -> anyhow::Result<Token> {
         let mut result = String::new();
         while let Some(is_char) = self.cur_char
             && (is_char.is_ascii_alphanumeric() || is_char == '_')
@@ -251,12 +259,12 @@ impl<'a> Lexer<'a> {
             result.push(is_char);
             self.forward();
         }
-        if let Some(token) = KEYWORDS.get(&result).cloned() {
+        if let Some(token) = get_keyword(&result, pos) {
             self.expext_separator()?;
             Ok(token)
         } else {
             self.expext_separator()?;
-            Ok(Token::Name(result))
+            Ok(Token::Name((pos, result)))
         }
     }
 
@@ -284,12 +292,12 @@ impl<'a> Lexer<'a> {
             .map_err(|_| anyhow::format_err!("[Ln {}, Col {}] ERROR: Can't parse HEX value", self.line, self.col - 1))
     }
 
-    fn read_number(&mut self) -> anyhow::Result<Token> {
+    fn read_number(&mut self, pos: FilePos) -> anyhow::Result<Token> {
         if self.cur_char == Some('0') {
             self.forward();
             if self.cur_char == Some('x') || self.cur_char == Some('X') {
                 self.forward();
-                return Ok(Token::Int(self.read_hex()?));
+                return Ok(Token::Int((pos, self.read_hex()?)));
             }
         }
         let integer = self.read_int().0;
@@ -309,15 +317,16 @@ impl<'a> Lexer<'a> {
             };
 
             self.expext_separator()?;
-            Ok(Token::Float(
+            Ok(Token::Float((
+                pos,
                 (integer as f64 + decimal.unwrap_or(0.0)) * 10f64.powi(exponent as i32),
-            ))
+            )))
         } else if let Some(dm_part) = decimal {
             self.expext_separator()?;
-            Ok(Token::Float(integer as f64 + dm_part))
+            Ok(Token::Float((pos, integer as f64 + dm_part)))
         } else {
             self.expext_separator()?;
-            Ok(Token::Int(integer))
+            Ok(Token::Int((pos, integer)))
         }
     }
 
@@ -378,17 +387,20 @@ pub fn debug_dump(lexer: &mut Lexer) -> anyhow::Result<()> {
 
     loop {
         let LexerResult { token, pos, indent } = lexer.next()?;
-        if token == Token::Eof {
-            last_pos = pos;
-            break;
+        match token {
+            Token::Eof(eofpos) => {
+                last_pos = eofpos;
+                break;
+            }
+            _ => {}
         }
 
         if indent > *indent_stack.front().unwrap() {
             indent_stack.push_front(indent);
-            print_token(Token::Indent, pos, indent);
+            print_token(Token::Indent(pos), pos, indent);
         } else {
             while indent < *indent_stack.front().unwrap() {
-                print_token(Token::Dedent, pos, indent);
+                print_token(Token::Dedent(pos), pos, indent);
                 indent_stack.pop_front();
             }
         }
@@ -398,7 +410,7 @@ pub fn debug_dump(lexer: &mut Lexer) -> anyhow::Result<()> {
     while let Some(indent) = indent_stack.pop_front()
         && indent > 0
     {
-        print_token(Token::Dedent, last_pos, indent);
+        print_token(Token::Dedent(last_pos), last_pos, indent);
     }
 
     Ok(())

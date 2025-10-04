@@ -8,7 +8,8 @@ pomelo! {
         use crate::lexer::FilePos;
     }
 
-    %token #[derive(Clone,Debug,PartialEq)] pub enum Token {};
+    %token #[derive(Clone,Debug)] pub enum Token {};
+    %extra_token FilePos;
     %extra_argument FilePos;
     %error anyhow::Error;
 
@@ -106,20 +107,20 @@ pomelo! {
 
     constdecl ::= KwConst single_constdecl(sc) NewLine { ModNode::ConstDecl(vec![sc]) };
     constdecl ::= KwConst NewLine Indent constdecl_list(dl) NewLine Dedent { ModNode::ConstDecl(dl) };
-    single_constdecl ::= Name(n) basic_type(t) Assign expr(e) { (n, t, e) };
+    single_constdecl ::= Name(n) basic_type(t) Assign expr(e) { (n.1, t, e) };
     constdecl_list ::= constdecl_list(mut dl) NewLine single_constdecl(d) { dl.push(d); dl };
     constdecl_list ::= single_constdecl(d) { vec![d] };
 
-    fndecl ::= KwFunc Name(n) LParen param_list(pl) RParen basic_type?(t) NewLine block(b) { ModNode::FuncDecl(n, pl, t, b) };
+    fndecl ::= KwFunc Name(n) LParen param_list(pl) RParen basic_type?(t) NewLine block(b) { ModNode::FuncDecl(n.1, pl, t, b) };
     param_list ::= param_list(mut pl) Comma param(p) { pl.push(p); pl };
     param_list ::= param(p) { vec![p] };
     param_list ::= { vec![] };
-    param ::= Name(n) basic_type(t) { (n, t) };
+    param ::= Name(n) basic_type(t) { (n.1, t) };
 
     stmt_list ::= stmt_list(mut sl) stmt(s) { sl.push(s); sl };
     stmt_list ::= stmt(s) { vec![s] };
 
-    stmt ::= stmt_oneline NewLine;
+    stmt ::= stmt_oneline(st) NewLine { st };
     stmt ::= stmt_multiline;
 
     stmt_oneline ::= assign;
@@ -141,21 +142,21 @@ pomelo! {
 
     ifstmt ::= KwIf expr(e) KwThen stmt_oneline(so) NewLine { CodeNode::If(e, vec![so], vec![], vec![]) };
     ifstmt ::= KwIf expr(e) NewLine block(b) elif_list?(el) else_branch?(eb) { CodeNode::If(e, b, el.unwrap_or(vec![]), eb.unwrap_or(vec![])) };
-    else_branch ::= KwElse NewLine block;
+    else_branch ::= KwElse NewLine block(b) { b };
     elif_branch ::= KwElif expr(e) NewLine block(b) { (e, b) };
     elif_list ::= elif_list(mut el) elif_branch(eb) { el.push(eb); el };
     elif_list ::= elif_branch(el) { vec![el] };
 
     forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) NewLine block(b) { CodeNode::For(v, es, ef, s, b) };
-    step_variant ::= KwStep expr;
+    step_variant ::= KwStep expr(e) { e };
     forstmt ::= KwFor var(v) KwIn expr(ea) NewLine block(b) { CodeNode::ForIn(v,ea, b) };
     forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) KwDo stmt_oneline(so) NewLine  { CodeNode::For(v, es, ef, s, vec![so]) };
     forstmt ::= KwFor var(v) KwIn expr(ea) KwDo stmt_oneline(so) NewLine { CodeNode::ForIn(v,ea, vec![so]) };
 
     vardecl ::= KwVar single_vardecl(sv) NewLine { CodeNode::VarDecl(vec![sv]) };
     vardecl ::= KwVar NewLine Indent vardecl_list(dl) NewLine Dedent { CodeNode::VarDecl(dl) };
-    single_vardecl ::= Name(n) basic_type(t) opt_assign?(a) { (n, t, a) };
-    opt_assign ::= Assign expr;
+    single_vardecl ::= Name(n) basic_type(t) opt_assign?(a) { (n.1, t, a) };
+    opt_assign ::= Assign expr(e) { e };
     vardecl_list ::= vardecl_list(mut dl) NewLine single_vardecl(d) { dl.push(d); dl };
     vardecl_list ::= single_vardecl(d) { vec![d] };
 
@@ -164,12 +165,12 @@ pomelo! {
     whilestmt ::= KwWhile expr(e) NewLine block(b) { CodeNode::While(e, b) };
     whilestmt ::= KwWhile expr(e) KwDo stmt_oneline(so) NewLine { CodeNode::While(e, vec![so]) };
 
-    expr ::= Int(v)     { ExprNode::new(ExprNodeData::IntLiteral(v)) };
-    expr ::= Float(v)   { ExprNode::new(ExprNodeData::FloatLiteral(v)) };
-    expr ::= Str(v)     { ExprNode::new(ExprNodeData::StringLiteral(v)) };
+    expr ::= Int(v)     { ExprNode::new(ExprNodeData::IntLiteral(v.1)) };
+    expr ::= Float(v)   { ExprNode::new(ExprNodeData::FloatLiteral(v.1)) };
+    expr ::= Str(v)     { ExprNode::new(ExprNodeData::StringLiteral(v.1)) };
     expr ::= boolval(v) { ExprNode::new(ExprNodeData::BoolLiteral(v)) };
     expr ::= var(v)     { ExprNode::new(ExprNodeData::Var(v)) };
-    expr ::= LParen expr RParen;
+    expr ::= LParen expr(e) RParen { e };
     expr ::= fncall_expr;
     expr ::= type_convert;
     expr ::= subscript;
@@ -199,8 +200,8 @@ pomelo! {
     basic_type ::= KwString { DataType::String };
     basic_type ::= KwBool { DataType::Bool };
 
-    var ::= var(mut v) Period Name(n) { v.push(n); v };
-    var ::= Name(n) { vec![n] };
+    var ::= var(mut v) Period Name(n) { v.push(n.1); v };
+    var ::= Name(n) { vec![n.1] };
 
     fncall ::= var(v) LParen arg_list(al) RParen { CodeNode::FnCall(v, al) };
     fncall_expr ::= var(v) LParen arg_list(al) RParen { ExprNode::new(ExprNodeData::FnCall(v, al)) };
@@ -213,7 +214,7 @@ pomelo! {
 
     subscript ::= var(v) LSqBracket expr(e) RSqBracket { ExprNode::new(ExprNodeData::Subscript(v, Box::new(e))) };
 
-    block ::= Indent stmt_list Dedent;
+    block ::= Indent stmt_list(sl) Dedent { sl };
     block ::= Indent KwPass NewLine Dedent { vec![] };
 
     // Reserved tokens
@@ -238,67 +239,67 @@ pub use parser::Token;
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::Name(name) => write!(f, "name '{}'", name),
-            Token::Str(st) => write!(f, "string literal '{}'", st),
-            Token::Int(v) => write!(f, "int literal ({})", v),
-            Token::Float(v) => write!(f, "float literal ({})", v),
-            Token::Eof => write!(f, "end of file"),
-            Token::KwOr => write!(f, "'or'"),
-            Token::KwAnd => write!(f, "'and'"),
-            Token::Eq => write!(f, "'=='"),
-            Token::NotEq => write!(f, "'!='"),
-            Token::Less => write!(f, "'<'"),
-            Token::LessOrEq => write!(f, "'<='"),
-            Token::Greater => write!(f, "'>'"),
-            Token::GreaterOrEq => write!(f, "'>='"),
-            Token::Add => write!(f, "'+'"),
-            Token::Sub => write!(f, "'-'"),
-            Token::Mul => write!(f, "'*'"),
-            Token::Div => write!(f, "'/'"),
-            Token::Mod => write!(f, "'%'"),
-            Token::KwNot => write!(f, "'not'"),
-            Token::NewLine => write!(f, "new line"),
-            Token::Assign => write!(f, "'='"),
-            Token::AddAssign => write!(f, "'+='"),
-            Token::SubAssign => write!(f, "'-='"),
-            Token::MulAssign => write!(f, "'*='"),
-            Token::DivAssign => write!(f, "'/='"),
-            Token::ModAssign => write!(f, "'%='"),
-            Token::KwIf => write!(f, "'if'"),
-            Token::KwThen => write!(f, "'then'"),
-            Token::KwElse => write!(f, "'else'"),
-            Token::KwElif => write!(f, "'elif'"),
-            Token::KwFor => write!(f, "'for'"),
-            Token::KwTo => write!(f, "'to'"),
-            Token::KwStep => write!(f, "'step'"),
-            Token::KwIn => write!(f, "'in'"),
-            Token::KwVar => write!(f, "'var'"),
-            Token::Indent => write!(f, "indent"),
-            Token::Dedent => write!(f, "dedent"),
-            Token::KwConst => write!(f, "'const'"),
-            Token::LParen => write!(f, "'('"),
-            Token::RParen => write!(f, "')'"),
-            Token::KwTrue => write!(f, "'true'"),
-            Token::KwFalse => write!(f, "'false'"),
-            Token::KwByte => write!(f, "'byte'"),
-            Token::KwInt => write!(f, "'int'"),
-            Token::KwFloat => write!(f, "'float'"),
-            Token::KwFixed => write!(f, "'fixed'"),
-            Token::KwString => write!(f, "'string'"),
-            Token::KwBool => write!(f, "'bool'"),
-            Token::Period => write!(f, "'.'"),
-            Token::Comma => write!(f, "','"),
-            Token::KwPass => write!(f, "'pass'"),
-            Token::KwFunc => write!(f, "'func'"),
-            Token::KwRef => write!(f, "'ref'"),
-            Token::KwReturn => write!(f, "'return'"),
-            Token::KwStruct => write!(f, "'struct'"),
-            Token::KwType => write!(f, "'type'"),
-            Token::KwWhile => write!(f, "'while'"),
-            Token::Colon => write!(f, "':'"),
-            Token::LSqBracket => write!(f, "'['"),
-            Token::RSqBracket => write!(f, "']'"),
-            Token::KwDo => write!(f, "'do'"),
+            Token::Name((_, name)) => write!(f, "name '{}'", name),
+            Token::Str((_, st)) => write!(f, "string literal '{}'", st),
+            Token::Int((_, v)) => write!(f, "int literal ({})", v),
+            Token::Float((_, v)) => write!(f, "float literal ({})", v),
+            Token::Eof(_) => write!(f, "end of file"),
+            Token::KwOr(_) => write!(f, "'or'"),
+            Token::KwAnd(_) => write!(f, "'and'"),
+            Token::Eq(_) => write!(f, "'=='"),
+            Token::NotEq(_) => write!(f, "'!='"),
+            Token::Less(_) => write!(f, "'<'"),
+            Token::LessOrEq(_) => write!(f, "'<='"),
+            Token::Greater(_) => write!(f, "'>'"),
+            Token::GreaterOrEq(_) => write!(f, "'>='"),
+            Token::Add(_) => write!(f, "'+'"),
+            Token::Sub(_) => write!(f, "'-'"),
+            Token::Mul(_) => write!(f, "'*'"),
+            Token::Div(_) => write!(f, "'/'"),
+            Token::Mod(_) => write!(f, "'%'"),
+            Token::KwNot(_) => write!(f, "'not'"),
+            Token::NewLine(_) => write!(f, "new line"),
+            Token::Assign(_) => write!(f, "'='"),
+            Token::AddAssign(_) => write!(f, "'+='"),
+            Token::SubAssign(_) => write!(f, "'-='"),
+            Token::MulAssign(_) => write!(f, "'*='"),
+            Token::DivAssign(_) => write!(f, "'/='"),
+            Token::ModAssign(_) => write!(f, "'%='"),
+            Token::KwIf(_) => write!(f, "'if'"),
+            Token::KwThen(_) => write!(f, "'then'"),
+            Token::KwElse(_) => write!(f, "'else'"),
+            Token::KwElif(_) => write!(f, "'elif'"),
+            Token::KwFor(_) => write!(f, "'for'"),
+            Token::KwTo(_) => write!(f, "'to'"),
+            Token::KwStep(_) => write!(f, "'step'"),
+            Token::KwIn(_) => write!(f, "'in'"),
+            Token::KwVar(_) => write!(f, "'var'"),
+            Token::Indent(_) => write!(f, "indent"),
+            Token::Dedent(_) => write!(f, "dedent"),
+            Token::KwConst(_) => write!(f, "'const'"),
+            Token::LParen(_) => write!(f, "'('"),
+            Token::RParen(_) => write!(f, "')'"),
+            Token::KwTrue(_) => write!(f, "'true'"),
+            Token::KwFalse(_) => write!(f, "'false'"),
+            Token::KwByte(_) => write!(f, "'byte'"),
+            Token::KwInt(_) => write!(f, "'int'"),
+            Token::KwFloat(_) => write!(f, "'float'"),
+            Token::KwFixed(_) => write!(f, "'fixed'"),
+            Token::KwString(_) => write!(f, "'string'"),
+            Token::KwBool(_) => write!(f, "'bool'"),
+            Token::Period(_) => write!(f, "'.'"),
+            Token::Comma(_) => write!(f, "','"),
+            Token::KwPass(_) => write!(f, "'pass'"),
+            Token::KwFunc(_) => write!(f, "'func'"),
+            Token::KwRef(_) => write!(f, "'ref'"),
+            Token::KwReturn(_) => write!(f, "'return'"),
+            Token::KwStruct(_) => write!(f, "'struct'"),
+            Token::KwType(_) => write!(f, "'type'"),
+            Token::KwWhile(_) => write!(f, "'while'"),
+            Token::Colon(_) => write!(f, "':'"),
+            Token::LSqBracket(_) => write!(f, "'['"),
+            Token::RSqBracket(_) => write!(f, "']'"),
+            Token::KwDo(_) => write!(f, "'do'"),
         }
     }
 }
