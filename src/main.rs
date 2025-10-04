@@ -24,12 +24,9 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
     let last_pos: FilePos;
     loop {
         let LexerResult { token, pos, indent } = lex.next()?;
-        match token {
-            Token::Eof(eofpos) => {
-                last_pos = eofpos;
-                break;
-            }
-            _ => {}
+        if let Token::Eof(eofpos) = token {
+            last_pos = eofpos;
+            break;
         }
 
         *par.extra_mut() = pos;
@@ -44,10 +41,7 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
             }
         }
 
-        new_line = match token {
-            Token::NewLine(_) => true,
-            _ => false,
-        };
+        new_line = matches!(token, Token::NewLine(_));
         par.parse(token)?;
     }
 

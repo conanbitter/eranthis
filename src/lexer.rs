@@ -387,12 +387,9 @@ pub fn debug_dump(lexer: &mut Lexer) -> anyhow::Result<()> {
 
     loop {
         let LexerResult { token, pos, indent } = lexer.next()?;
-        match token {
-            Token::Eof(eofpos) => {
-                last_pos = eofpos;
-                break;
-            }
-            _ => {}
+        if let Token::Eof(eofpos) = token {
+            last_pos = eofpos;
+            break;
         }
 
         if indent > *indent_stack.front().unwrap() {
