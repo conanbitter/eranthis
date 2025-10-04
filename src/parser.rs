@@ -47,16 +47,16 @@ pomelo! {
 
     %type arg_list Vec<ExprNode>;
     %type assign CodeNode;
-    %type basic_type DataType;
-    %type block Vec<CodeNode>;
-    %type boolval bool;
+    %type basic_type (FilePos, DataType);
+    %type block CodeBlock;
+    %type boolval (FilePos, bool);
     %type constdecl ModNode;
-    %type constdecl_list Vec<(String, DataType, ExprNode)>;
+    %type constdecl_list Vec<(String, DataType, ExprNode, FilePos)>;
     %type decl ModNode;
     %type decl_list Vec<ModNode>;
-    %type elif_branch (ExprNode, Vec<CodeNode>);
-    %type elif_list Vec<(ExprNode, Vec<CodeNode>)>;
-    %type else_branch Vec<CodeNode>;
+    %type elif_branch (ExprNode, CodeBlock);
+    %type elif_list Vec<(ExprNode, CodeBlock)>;
+    %type else_branch CodeBlock;
     %type expr ExprNode;
     %type fncall CodeNode;
     %type fncall_expr ExprNode;
@@ -69,19 +69,19 @@ pomelo! {
     %type param_list Vec<(String, DataType)>;
     %type returnstmt CodeNode;
     %type root Vec<ModNode>;
-    %type single_constdecl (String, DataType, ExprNode);
-    %type single_vardecl (String, DataType, Option<ExprNode>);
+    %type single_constdecl (String, DataType, ExprNode, FilePos);
+    %type single_vardecl (String, DataType, Option<ExprNode>, FilePos);
     %type step_variant ExprNode;
     %type stmt CodeNode;
-    %type stmt_list Vec<CodeNode>;
+    %type stmt_list CodeBlock;
     %type stmt_multiline CodeNode;
     %type stmt_oneline CodeNode;
     %type subscript ExprNode;
     %type type_convert ExprNode;
-    %type var Vec<String>;
+    %type var (FilePos, Vec<String>);
     %type vardecl CodeNode;
     %type vardecl_global ModNode;
-    %type vardecl_list Vec<(String, DataType, Option<ExprNode>)>;
+    %type vardecl_list Vec<(String, DataType, Option<ExprNode>, FilePos)>;
     %type whilestmt CodeNode;
 
 
@@ -102,23 +102,23 @@ pomelo! {
     decl ::= constdecl;
     decl ::= fndecl;
 
-    vardecl_global ::= KwVar single_vardecl(sv) NewLine { ModNode::VarDecl(vec![sv]) };
-    vardecl_global ::= KwVar NewLine Indent vardecl_list(dl) NewLine Dedent { ModNode::VarDecl(dl) };
+    vardecl_global ::= KwVar(p) single_vardecl(sv) NewLine { ModNode::new(ModNodeData::VarDecl(vec![(sv.0, sv.1, sv.2, p)]), p) };
+    vardecl_global ::= KwVar(p) NewLine Indent vardecl_list(dl) NewLine Dedent { ModNode::new(ModNodeData::VarDecl(dl), p) };
 
-    constdecl ::= KwConst single_constdecl(sc) NewLine { ModNode::ConstDecl(vec![sc]) };
-    constdecl ::= KwConst NewLine Indent constdecl_list(dl) NewLine Dedent { ModNode::ConstDecl(dl) };
-    single_constdecl ::= Name(n) basic_type(t) Assign expr(e) { (n.1, t, e) };
+    constdecl ::= KwConst(p) single_constdecl(sc) NewLine { ModNode::new(ModNodeData::ConstDecl(vec![(sc.0, sc.1, sc.2, p)]), p) };
+    constdecl ::= KwConst(p) NewLine Indent constdecl_list(dl) NewLine Dedent { ModNode::new(ModNodeData::ConstDecl(dl), p) };
+    single_constdecl ::= Name(n) basic_type(t) Assign expr(e) { (n.1, t.1, e, n.0) };
     constdecl_list ::= constdecl_list(mut dl) NewLine single_constdecl(d) { dl.push(d); dl };
     constdecl_list ::= single_constdecl(d) { vec![d] };
 
-    fndecl ::= KwFunc Name(n) LParen param_list(pl) RParen basic_type?(t) NewLine block(b) { ModNode::FuncDecl(n.1, pl, t, b) };
+    fndecl ::= KwFunc(p) Name(n) LParen param_list(pl) RParen basic_type?(t) NewLine block(b) { ModNode::new(ModNodeData::FuncDecl(n.1, pl, t.map(|t| t.1), b), p) };
     param_list ::= param_list(mut pl) Comma param(p) { pl.push(p); pl };
     param_list ::= param(p) { vec![p] };
     param_list ::= { vec![] };
-    param ::= Name(n) basic_type(t) { (n.1, t) };
+    param ::= Name(n) basic_type(t) { (n.1, t.1) };
 
-    stmt_list ::= stmt_list(mut sl) stmt(s) { sl.push(s); sl };
-    stmt_list ::= stmt(s) { vec![s] };
+    stmt_list ::= stmt_list(mut sl) stmt(s) { sl.stmts.push(s); sl };
+    stmt_list ::= stmt(s) { CodeBlock::new(vec![s]) };
 
     stmt ::= stmt_oneline(st) NewLine { st };
     stmt ::= stmt_multiline;
@@ -132,105 +132,105 @@ pomelo! {
     stmt_multiline ::= vardecl;
     stmt_multiline ::= whilestmt;
 
-    assign ::= var(v) Assign expr(e) { CodeNode::Assign(v, e) };
-    assign ::= var(v) opassign(o) expr(e) { CodeNode::OpAssign(v, o, e) };
+    assign ::= var(v) Assign expr(e) { CodeNode::new(CodeNodeData::Assign(v.1, e), v.0) };
+    assign ::= var(v) opassign(o) expr(e) { CodeNode::new(CodeNodeData::OpAssign(v.1, o, e), v.0) };
     opassign ::= AddAssign { BinOp::Add };
     opassign ::= SubAssign { BinOp::Sub };
     opassign ::= MulAssign { BinOp::Mul };
     opassign ::= DivAssign { BinOp::Div };
     opassign ::= ModAssign { BinOp::Mod };
 
-    ifstmt ::= KwIf expr(e) KwThen stmt_oneline(so) NewLine { CodeNode::If(e, vec![so], vec![], vec![]) };
-    ifstmt ::= KwIf expr(e) NewLine block(b) elif_list?(el) else_branch?(eb) { CodeNode::If(e, b, el.unwrap_or(vec![]), eb.unwrap_or(vec![])) };
+    ifstmt ::= KwIf(p) expr(e) KwThen stmt_oneline(so) NewLine { CodeNode::new(CodeNodeData::If(e, CodeBlock::new(vec![so]), vec![], CodeBlock::new(vec![])), p) };
+    ifstmt ::= KwIf(p) expr(e) NewLine block(b) elif_list?(el) else_branch?(eb) { CodeNode::new(CodeNodeData::If(e, b, el.unwrap_or(vec![]), eb.unwrap_or(CodeBlock::new(vec![]))), p) };
     else_branch ::= KwElse NewLine block(b) { b };
     elif_branch ::= KwElif expr(e) NewLine block(b) { (e, b) };
     elif_list ::= elif_list(mut el) elif_branch(eb) { el.push(eb); el };
     elif_list ::= elif_branch(el) { vec![el] };
 
-    forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) NewLine block(b) { CodeNode::For(v, es, ef, s, b) };
+    forstmt ::= KwFor(p) var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) NewLine block(b) { CodeNode::new(CodeNodeData::For(v.1, es, ef, s, b), p) };
     step_variant ::= KwStep expr(e) { e };
-    forstmt ::= KwFor var(v) KwIn expr(ea) NewLine block(b) { CodeNode::ForIn(v,ea, b) };
-    forstmt ::= KwFor var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) KwDo stmt_oneline(so) NewLine  { CodeNode::For(v, es, ef, s, vec![so]) };
-    forstmt ::= KwFor var(v) KwIn expr(ea) KwDo stmt_oneline(so) NewLine { CodeNode::ForIn(v,ea, vec![so]) };
+    forstmt ::= KwFor(p) var(v) KwIn expr(ea) NewLine block(b) { CodeNode::new(CodeNodeData::ForIn(v.1, ea, b), p) };
+    forstmt ::= KwFor(p) var(v) Assign expr(es) KwTo expr(ef) step_variant?(s) KwDo stmt_oneline(so) NewLine  { CodeNode::new(CodeNodeData::For(v.1, es, ef, s, CodeBlock::new(vec![so])), p) };
+    forstmt ::= KwFor(p) var(v) KwIn expr(ea) KwDo stmt_oneline(so) NewLine { CodeNode::new(CodeNodeData::ForIn(v.1, ea, CodeBlock::new(vec![so])), p) };
 
-    vardecl ::= KwVar single_vardecl(sv) NewLine { CodeNode::VarDecl(vec![sv]) };
-    vardecl ::= KwVar NewLine Indent vardecl_list(dl) NewLine Dedent { CodeNode::VarDecl(dl) };
-    single_vardecl ::= Name(n) basic_type(t) opt_assign?(a) { (n.1, t, a) };
+    vardecl ::= KwVar(p) single_vardecl(sv) NewLine { CodeNode::new(CodeNodeData::VarDecl(vec![(sv.0, sv.1, sv.2, p)]), p) };
+    vardecl ::= KwVar(p) NewLine Indent vardecl_list(dl) NewLine Dedent { CodeNode::new(CodeNodeData::VarDecl(dl), p) };
+    single_vardecl ::= Name(n) basic_type(t) opt_assign?(a) { (n.1, t.1, a, n.0) };
     opt_assign ::= Assign expr(e) { e };
     vardecl_list ::= vardecl_list(mut dl) NewLine single_vardecl(d) { dl.push(d); dl };
     vardecl_list ::= single_vardecl(d) { vec![d] };
 
-    returnstmt ::= KwReturn expr(e) { CodeNode::Return(e) };
+    returnstmt ::= KwReturn(p) expr(e) { CodeNode::new(CodeNodeData::Return(e), p) };
 
-    whilestmt ::= KwWhile expr(e) NewLine block(b) { CodeNode::While(e, b) };
-    whilestmt ::= KwWhile expr(e) KwDo stmt_oneline(so) NewLine { CodeNode::While(e, vec![so]) };
+    whilestmt ::= KwWhile(p) expr(e) NewLine block(b) { CodeNode::new(CodeNodeData::While(e, b), p) };
+    whilestmt ::= KwWhile(p) expr(e) KwDo stmt_oneline(so) NewLine { CodeNode::new(CodeNodeData::While(e, CodeBlock::new(vec![so])), p) };
 
-    expr ::= Int(v)     { ExprNode::new(ExprNodeData::IntLiteral(v.1)) };
-    expr ::= Float(v)   { ExprNode::new(ExprNodeData::FloatLiteral(v.1)) };
-    expr ::= Str(v)     { ExprNode::new(ExprNodeData::StringLiteral(v.1)) };
-    expr ::= boolval(v) { ExprNode::new(ExprNodeData::BoolLiteral(v)) };
-    expr ::= var(v)     { ExprNode::new(ExprNodeData::Var(v)) };
+    expr ::= Int(v)     { ExprNode::new(ExprNodeData::IntLiteral(v.1), v.0) };
+    expr ::= Float(v)   { ExprNode::new(ExprNodeData::FloatLiteral(v.1), v.0) };
+    expr ::= Str(v)     { ExprNode::new(ExprNodeData::StringLiteral(v.1), v.0) };
+    expr ::= boolval(v) { ExprNode::new(ExprNodeData::BoolLiteral(v.1), v.0) };
+    expr ::= var(v)     { ExprNode::new(ExprNodeData::Var(v.1), v.0) };
     expr ::= LParen expr(e) RParen { e };
     expr ::= fncall_expr;
     expr ::= type_convert;
     expr ::= subscript;
-    expr ::= expr(l) Add         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Add,      Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) Sub         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Sub,      Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) Mul         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Mul,      Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) Div         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Div,      Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) Mod         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Mod,      Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) Less        expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Less,     Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) LessOrEq    expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::LessEq,   Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) Greater     expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Greater,  Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) GreaterOrEq expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::GreaterEq,Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) Eq          expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Eq,       Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) NotEq       expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::NotEq,    Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) KwAnd       expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::And,      Box::new(l), Box::new(r) )) };
-    expr ::= expr(l) KwOr        expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Or,       Box::new(l), Box::new(r) )) };
-    expr ::= KwNot expr(e)       { ExprNode::new(ExprNodeData::UnOp( UnOp::Not, Box::new(e) )) };
-    expr ::= Sub expr(e) [KwNot] { ExprNode::new(ExprNodeData::UnOp( UnOp::Neg, Box::new(e) )) };
+    expr ::= expr(l) Add(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Add,      Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) Sub(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Sub,      Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) Mul(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Mul,      Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) Div(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Div,      Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) Mod(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Mod,      Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) Less(p)        expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Less,     Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) LessOrEq(p)    expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::LessEq,   Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) Greater(p)     expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Greater,  Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) GreaterOrEq(p) expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::GreaterEq,Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) Eq(p)          expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Eq,       Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) NotEq(p)       expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::NotEq,    Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) KwAnd(p)       expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::And,      Box::new(l), Box::new(r) ), p) };
+    expr ::= expr(l) KwOr(p)        expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Or,       Box::new(l), Box::new(r) ), p) };
+    expr ::= KwNot(p) expr(e)       { ExprNode::new(ExprNodeData::UnOp( UnOp::Not, Box::new(e) ), p) };
+    expr ::= Sub(p) expr(e) [KwNot] { ExprNode::new(ExprNodeData::UnOp( UnOp::Neg, Box::new(e) ), p) };
 
-    boolval ::= KwTrue  { true };
-    boolval ::= KwFalse { false };
+    boolval ::= KwTrue(p)  { (p, true) };
+    boolval ::= KwFalse(p) { (p, false) };
 
-    basic_type ::= KwByte { DataType::Byte };
-    basic_type ::= KwInt { DataType::Int };
-    basic_type ::= KwFloat { DataType::Float };
-    basic_type ::= KwFixed { DataType::Fixed };
-    basic_type ::= KwString { DataType::String };
-    basic_type ::= KwBool { DataType::Bool };
+    basic_type ::= KwByte(p)   { (p, DataType::Byte) };
+    basic_type ::= KwInt(p)    { (p, DataType::Int) };
+    basic_type ::= KwFloat(p)  { (p, DataType::Float) };
+    basic_type ::= KwFixed(p)  { (p, DataType::Fixed) };
+    basic_type ::= KwString(p) { (p, DataType::String) };
+    basic_type ::= KwBool(p)   { (p, DataType::Bool) };
 
-    var ::= var(mut v) Period Name(n) { v.push(n.1); v };
-    var ::= Name(n) { vec![n.1] };
+    var ::= var(mut v) Period Name(n) { v.1.push(n.1); v };
+    var ::= Name(n) { (n.0, vec![n.1]) };
 
-    fncall ::= var(v) LParen arg_list(al) RParen { CodeNode::FnCall(v, al) };
-    fncall_expr ::= var(v) LParen arg_list(al) RParen { ExprNode::new(ExprNodeData::FnCall(v, al)) };
+    fncall ::= var(v) LParen arg_list(al) RParen { CodeNode::new(CodeNodeData::FnCall(v.1, al), v.0)};
+    fncall_expr ::= var(v) LParen arg_list(al) RParen { ExprNode::new(ExprNodeData::FnCall(v.1, al), v.0) };
 
     arg_list ::= arg_list(mut al) Comma expr(e) { al.push(e); al };
     arg_list ::= expr(e) { vec![e] };
     arg_list ::= { vec![] };
 
-    type_convert ::= basic_type(t) LParen expr(e) RParen { ExprNode::new(ExprNodeData::TypeConvert(Box::new(e), t)) };
+    type_convert ::= basic_type(t) LParen expr(e) RParen { ExprNode::new(ExprNodeData::TypeConvert(Box::new(e), t.1), t.0) };
 
-    subscript ::= var(v) LSqBracket expr(e) RSqBracket { ExprNode::new(ExprNodeData::Subscript(v, Box::new(e))) };
+    subscript ::= var(v) LSqBracket expr(e) RSqBracket { ExprNode::new(ExprNodeData::Subscript(v.1, Box::new(e)), v.0) };
 
     block ::= Indent stmt_list(sl) Dedent { sl };
-    block ::= Indent KwPass NewLine Dedent { vec![] };
+    block ::= Indent KwPass NewLine Dedent { CodeBlock::new(vec![]) };
 
     // Reserved tokens
 
     // Reserved for function definition
     //root ::= KwFunc { ModNode::Dummy };
-    decl ::= KwRef { ModNode::Dummy };
+    decl ::= KwRef(p) { ModNode::new(ModNodeData::Dummy, p) };
 
     // Reserved for struct definition
-    decl ::= KwStruct { ModNode::Dummy };
+    decl ::= KwStruct(p) { ModNode::new(ModNodeData::Dummy, p) };
 
     // Reserved for type aliases
-    decl ::= KwType { ModNode::Dummy };
+    decl ::= KwType(p) { ModNode::new(ModNodeData::Dummy, p) };
 
     // Reserved for static members
-    decl ::= Colon { ModNode::Dummy };
+    decl ::= Colon(p) { ModNode::new(ModNodeData::Dummy, p) };
 }
 
 pub use parser::Parser;
