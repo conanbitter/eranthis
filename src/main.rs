@@ -11,6 +11,7 @@ mod ast;
 mod bytecode;
 mod lexer;
 mod parser;
+mod semantic;
 
 fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
     let source = fs::read_to_string(source_file)?;

@@ -71,6 +71,7 @@ pub struct CodeNode {
 #[derive(Debug)]
 pub struct CodeBlock {
     pub stmts: Vec<CodeNode>,
+    pub context_id: u32,
 }
 
 pub enum ModNodeData {
@@ -254,7 +255,7 @@ impl CodeNode {
 
 impl CodeBlock {
     pub fn new(stmts: Vec<CodeNode>) -> CodeBlock {
-        CodeBlock { stmts }
+        CodeBlock { stmts, context_id: 0 }
     }
 }
 

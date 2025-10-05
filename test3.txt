@@ -1,0 +1,9 @@
+const
+    a int = b + 5
+    b int = 8
+
+const c int = a + b
+const d fixed = 4.7
+const e float = d * 3
+
+const f int = int(e)
