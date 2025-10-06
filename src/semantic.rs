@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ast::{CodeBlock, ExprNodeData, ExprType};
+use crate::ast::{CodeBlock, ExprNode, ModNode, ModNodeData};
 
 enum ValueType {
     Byte,
@@ -52,7 +52,7 @@ struct Function {
     context_id: usize,
     body: CodeBlock,
 }
-struct Module {
+pub struct Module {
     constants: HashMap<String, Constant>,
     global_vars: HashMap<String, GlobalVar>,
     strings: Vec<String>,
@@ -73,5 +73,25 @@ impl Module {
 
     pub fn get_constant(&self, name: &String) -> Option<&Constant> {
         self.constants.get(name)
+    }
+
+    pub fn collect_constants(&mut self, root: &mut Vec<ModNode>) {
+        let mut constants: HashMap<String, &mut ExprNode> = HashMap::new();
+        for item in root {
+            if let ModNode {
+                data: ModNodeData::ConstDecl(list),
+                ..
+            } = item
+            {
+                for (name, _, value, _) in list {
+                    constants.insert(name.clone(), value);
+                }
+            }
+        }
+        println!("{:?}", constants);
+    }
+
+    pub fn debug_print(&self) {
+        //println!("{:?}", self.constants);
     }
 }

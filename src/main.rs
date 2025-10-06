@@ -3,12 +3,15 @@ use std::{collections::VecDeque, fs, path::Path};
 use crate::{
     ast::{CodeNodeData, ExprNode, ExprNodeData, ModNode, ModNodeData},
     bytecode::FrameAllocator,
+    fixedpoint::FixedPoint,
     lexer::{FilePos, Lexer, LexerResult},
     parser::{Parser, Token},
+    semantic::Module,
 };
 
 mod ast;
 mod bytecode;
+mod fixedpoint;
 mod lexer;
 mod parser;
 mod semantic;
@@ -90,9 +93,14 @@ fn opt_test(root: &mut Vec<ModNode>) {
 }
 
 fn main() -> anyhow::Result<()> {
-    let mut root = parse_file("test2.txt")?;
-    opt_test(&mut root);
-    ast::debug_dump(&root, "test2_result.txt")?;
+    //let mut root = parse_file("test3.txt")?;
+    //opt_test(&mut root);
+    //ast::debug_dump(&root, "test2_result.txt")?;
+    //let mut sem = Module::new();
+    //sem.collect_constants(&mut root);
+    let a = 0.4;
+    let b = FixedPoint::from(a);
+    println!("a={}  b={} ({1:?}), float={}", a, b, f64::from(b));
 
     //println!("{:?}", root);
     /*let mut frame = FrameAllocator::new();
