@@ -98,7 +98,7 @@ fn main() -> anyhow::Result<()> {
     //ast::debug_dump(&root, "test2_result.txt")?;
     //let mut sem = Module::new();
     //sem.collect_constants(&mut root);
-    let a = 0.4;
+    let a = -0.4;
     let b = FixedPoint::from(a);
     println!("a={}  b={} ({1:?}), float={}", a, b, f64::from(b));
 

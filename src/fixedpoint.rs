@@ -13,16 +13,25 @@ const DECIMAL_MASK: u64 = DIVISOR as u64 - 1;
 
 impl Display for FixedPoint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let decimal = (self.0 as u64 & DECIMAL_MASK) * DECIMAL_FACTOR / DIVISOR as u64;
-        let decimal_str = format!("{:012}", decimal);
+        let (sign, decimal) = if self.0 > 0 {
+            (false, self.0 as u64)
+        } else {
+            (true, -self.0 as u64)
+        };
+        let decimal = (decimal & DECIMAL_MASK) * DECIMAL_FACTOR / DIVISOR as u64;
+        let decimal = format!("{:012}", decimal);
         let mut decimal_length = 0;
-        for (i, c) in decimal_str.chars().enumerate() {
+        for (i, c) in decimal.chars().enumerate() {
             if c != '0' {
                 decimal_length = i;
             }
         }
-        let decimal_trimmed: String = decimal_str.chars().take(decimal_length + 1).collect();
-        write!(f, "{}.{}", self.0 / DIVISOR, decimal_trimmed)
+        let decimal: String = decimal.chars().take(decimal_length + 1).collect();
+        if sign {
+            write!(f, "-{}.{}", self.0 / DIVISOR, decimal)
+        } else {
+            write!(f, "{}.{}", self.0 / DIVISOR, decimal)
+        }
     }
 }
 
