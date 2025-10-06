@@ -98,9 +98,26 @@ fn main() -> anyhow::Result<()> {
     //ast::debug_dump(&root, "test2_result.txt")?;
     //let mut sem = Module::new();
     //sem.collect_constants(&mut root);
-    let a = -0.4;
+    let a = -1.4;
     let b = FixedPoint::from(a);
     println!("a={}  b={} ({1:?}), float={}", a, b, f64::from(b));
+
+    let c = -3i32;
+    let b = FixedPoint::from(c);
+    println!("c={}  b={} ({1:?}), int={}", c, b, f64::from(b));
+
+    println!("0.25 x 2 = {}", FixedPoint::from(0.25) * FixedPoint::from(2));
+    println!("0.5 / 2 = {}", FixedPoint::from(0.5) / FixedPoint::from(2));
+    println!("0.25 + 2 = {}", FixedPoint::from(0.25) + FixedPoint::from(2));
+    println!("1.5 - 0.25 = {}", FixedPoint::from(1.5) - FixedPoint::from(0.25));
+
+    let mut d = FixedPoint::from(0);
+    let inc = FixedPoint::from(1) / FixedPoint::from(32);
+    println!("d= {}  inc={}", d, inc);
+    for _ in 0..32 {
+        d = d + inc;
+        println!("d= {}", d,);
+    }
 
     //println!("{:?}", root);
     /*let mut frame = FrameAllocator::new();
