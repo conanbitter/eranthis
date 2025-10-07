@@ -114,7 +114,7 @@ pub enum UnOp {
     Not,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum DataType {
     Byte,
     Int,
@@ -132,7 +132,7 @@ use std::{
     path::Path,
 };
 
-use crate::lexer::FilePos;
+use crate::{lexer::FilePos, semantic};
 
 impl Display for BinOp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

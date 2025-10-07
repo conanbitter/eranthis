@@ -62,6 +62,12 @@ impl From<FixedPoint> for i32 {
     }
 }
 
+impl From<i64> for FixedPoint {
+    fn from(value: i64) -> Self {
+        FixedPoint(value as i32 * DIVISOR)
+    }
+}
+
 impl Add for FixedPoint {
     type Output = FixedPoint;
 
