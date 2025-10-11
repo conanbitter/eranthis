@@ -91,7 +91,7 @@ pub struct ModNode {
     pub data: ModNodeData,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum BinOp {
     Add,
     Sub,
@@ -108,7 +108,7 @@ pub enum BinOp {
     Or,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum UnOp {
     Neg,
     Not,

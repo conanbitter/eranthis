@@ -1,6 +1,6 @@
 use std::{
     fmt::Display,
-    ops::{Add, Div, Mul, Sub},
+    ops::{Add, Div, Mul, Neg, Sub},
 };
 
 // Fixed point number in Q21.10 signed format
@@ -97,5 +97,13 @@ impl Div for FixedPoint {
 
     fn div(self, rhs: Self) -> Self::Output {
         FixedPoint((self.0 << FRACTION_BITS) / rhs.0)
+    }
+}
+
+impl Neg for FixedPoint {
+    type Output = FixedPoint;
+
+    fn neg(self) -> Self::Output {
+        FixedPoint(-self.0)
     }
 }

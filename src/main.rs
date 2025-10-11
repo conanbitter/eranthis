@@ -93,11 +93,12 @@ fn opt_test(root: &mut Vec<ModNode>) {
 }
 
 fn main() -> anyhow::Result<()> {
-    //let mut root = parse_file("test3.txt")?;
+    let mut root = parse_file("test3.txt")?;
     //opt_test(&mut root);
     //ast::debug_dump(&root, "test2_result.txt")?;
-    //let mut sem = Module::new();
-    //sem.collect_constants(&mut root);
+    let mut sem = Module::new();
+    sem.collect_constants(&mut root)?;
+    /*
     let a = -1.4;
     let b = FixedPoint::from(a);
     println!("a={}  b={} ({1:?}), float={}", a, b, f64::from(b));
@@ -110,6 +111,8 @@ fn main() -> anyhow::Result<()> {
     println!("0.5 / 2 = {}", FixedPoint::from(0.5) / FixedPoint::from(2));
     println!("0.25 + 2 = {}", FixedPoint::from(0.25) + FixedPoint::from(2));
     println!("1.5 - 0.25 = {}", FixedPoint::from(1.5) - FixedPoint::from(0.25));
+    println!("-0.5 = {}", -FixedPoint::from(0.5));
+    println!("-1.2 = {}", -FixedPoint::from(1.2));
 
     let mut d = FixedPoint::from(0);
     let inc = FixedPoint::from(1) / FixedPoint::from(32);
@@ -118,7 +121,7 @@ fn main() -> anyhow::Result<()> {
         d = d + inc;
         println!("d= {}", d,);
     }
-
+    */
     //println!("{:?}", root);
     /*let mut frame = FrameAllocator::new();
     frame.alloc(10); // 1
