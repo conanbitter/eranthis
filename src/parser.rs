@@ -5,11 +5,12 @@ use pomelo::pomelo;
 pomelo! {
      %include {
         use crate::ast::*;
+        use miette::SourceSpan;
         use crate::lexer::FilePos;
     }
 
     %token #[derive(Clone,Debug)] pub enum Token {};
-    %extra_token FilePos;
+    %extra_token SourceSpan;
     %extra_argument FilePos;
     %error anyhow::Error;
 
@@ -47,11 +48,11 @@ pomelo! {
 
     %type arg_list Vec<ExprNode>;
     %type assign CodeNode;
-    %type basic_type (FilePos, DataType);
+    %type basic_type (SourceSpan, DataType);
     %type block CodeBlock;
-    %type boolval (FilePos, bool);
+    %type boolval (SourceSpan, bool);
     %type constdecl ModNode;
-    %type constdecl_list Vec<(String, DataType, ExprNode, FilePos)>;
+    %type constdecl_list Vec<(String, DataType, ExprNode, SourceSpan)>;
     %type decl ModNode;
     %type decl_list Vec<ModNode>;
     %type elif_branch (ExprNode, CodeBlock);
@@ -69,8 +70,8 @@ pomelo! {
     %type param_list Vec<(String, DataType)>;
     %type returnstmt CodeNode;
     %type root Vec<ModNode>;
-    %type single_constdecl (String, DataType, ExprNode, FilePos);
-    %type single_vardecl (String, DataType, Option<ExprNode>, FilePos);
+    %type single_constdecl (String, DataType, ExprNode, SourceSpan);
+    %type single_vardecl (String, DataType, Option<ExprNode>, SourceSpan);
     %type step_variant ExprNode;
     %type stmt CodeNode;
     %type stmt_list CodeBlock;
@@ -78,10 +79,10 @@ pomelo! {
     %type stmt_oneline CodeNode;
     %type subscript ExprNode;
     %type type_convert ExprNode;
-    %type var (FilePos, Vec<String>);
+    %type var (SourceSpan, Vec<String>);
     %type vardecl CodeNode;
     %type vardecl_global ModNode;
-    %type vardecl_list Vec<(String, DataType, Option<ExprNode>, FilePos)>;
+    %type vardecl_list Vec<(String, DataType, Option<ExprNode>, SourceSpan)>;
     %type whilestmt CodeNode;
 
 

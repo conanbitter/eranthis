@@ -1,73 +1,78 @@
 use std::{char, collections::VecDeque, str::Chars};
 
+use miette::{SourceOffset, SourceSpan};
+
 use crate::parser::Token;
 
-fn get_keyword(name: &str, pos: FilePos) -> Option<Token> {
+fn get_keyword(name: &str, pos: SourceOffset) -> Option<Token> {
+    let span = SourceSpan::new(pos, name.len());
     match name {
-        "and" => Some(Token::KwAnd(pos)),
-        "bool" => Some(Token::KwBool(pos)),
-        "byte" => Some(Token::KwByte(pos)),
-        "const" => Some(Token::KwConst(pos)),
-        "do" => Some(Token::KwDo(pos)),
-        "elif" => Some(Token::KwElif(pos)),
-        "else" => Some(Token::KwElse(pos)),
-        "false" => Some(Token::KwFalse(pos)),
-        "fixed" => Some(Token::KwFixed(pos)),
-        "float" => Some(Token::KwFloat(pos)),
-        "for" => Some(Token::KwFor(pos)),
-        "func" => Some(Token::KwFunc(pos)),
-        "if" => Some(Token::KwIf(pos)),
-        "in" => Some(Token::KwIn(pos)),
-        "int" => Some(Token::KwInt(pos)),
-        "not" => Some(Token::KwNot(pos)),
-        "or" => Some(Token::KwOr(pos)),
-        "pass" => Some(Token::KwPass(pos)),
-        "ref" => Some(Token::KwRef(pos)),
-        "return" => Some(Token::KwReturn(pos)),
-        "step" => Some(Token::KwStep(pos)),
-        "string" => Some(Token::KwString(pos)),
-        "struct" => Some(Token::KwStruct(pos)),
-        "then" => Some(Token::KwThen(pos)),
-        "true" => Some(Token::KwTrue(pos)),
-        "to" => Some(Token::KwTo(pos)),
-        "type" => Some(Token::KwType(pos)),
-        "var" => Some(Token::KwVar(pos)),
-        "while" => Some(Token::KwWhile(pos)),
+        "and" => Some(Token::KwAnd(span)),
+        "bool" => Some(Token::KwBool(span)),
+        "byte" => Some(Token::KwByte(span)),
+        "const" => Some(Token::KwConst(span)),
+        "do" => Some(Token::KwDo(span)),
+        "elif" => Some(Token::KwElif(span)),
+        "else" => Some(Token::KwElse(span)),
+        "false" => Some(Token::KwFalse(span)),
+        "fixed" => Some(Token::KwFixed(span)),
+        "float" => Some(Token::KwFloat(span)),
+        "for" => Some(Token::KwFor(span)),
+        "func" => Some(Token::KwFunc(span)),
+        "if" => Some(Token::KwIf(span)),
+        "in" => Some(Token::KwIn(span)),
+        "int" => Some(Token::KwInt(span)),
+        "not" => Some(Token::KwNot(span)),
+        "or" => Some(Token::KwOr(span)),
+        "pass" => Some(Token::KwPass(span)),
+        "ref" => Some(Token::KwRef(span)),
+        "return" => Some(Token::KwReturn(span)),
+        "step" => Some(Token::KwStep(span)),
+        "string" => Some(Token::KwString(span)),
+        "struct" => Some(Token::KwStruct(span)),
+        "then" => Some(Token::KwThen(span)),
+        "true" => Some(Token::KwTrue(span)),
+        "to" => Some(Token::KwTo(span)),
+        "type" => Some(Token::KwType(span)),
+        "var" => Some(Token::KwVar(span)),
+        "while" => Some(Token::KwWhile(span)),
         _ => None,
     }
 }
 
-fn get_single_char_op(letter: char, pos: FilePos) -> Option<Token> {
+fn get_single_char_op(letter: char, pos: SourceOffset) -> Option<Token> {
+    let span = SourceSpan::new(pos, 1);
     match letter {
-        '=' => Some(Token::Assign(pos)),
-        '>' => Some(Token::Greater(pos)),
-        '<' => Some(Token::Less(pos)),
-        '+' => Some(Token::Add(pos)),
-        '-' => Some(Token::Sub(pos)),
-        '*' => Some(Token::Mul(pos)),
-        '/' => Some(Token::Div(pos)),
-        '%' => Some(Token::Mod(pos)),
-        '(' => Some(Token::LParen(pos)),
-        ')' => Some(Token::RParen(pos)),
-        '[' => Some(Token::LSqBracket(pos)),
-        ']' => Some(Token::RSqBracket(pos)),
-        ',' => Some(Token::Comma(pos)),
-        '.' => Some(Token::Period(pos)),
-        ':' => Some(Token::Colon(pos)),
+        '=' => Some(Token::Assign(span)),
+        '>' => Some(Token::Greater(span)),
+        '<' => Some(Token::Less(span)),
+        '+' => Some(Token::Add(span)),
+        '-' => Some(Token::Sub(span)),
+        '*' => Some(Token::Mul(span)),
+        '/' => Some(Token::Div(span)),
+        '%' => Some(Token::Mod(span)),
+        '(' => Some(Token::LParen(span)),
+        ')' => Some(Token::RParen(span)),
+        '[' => Some(Token::LSqBracket(span)),
+        ']' => Some(Token::RSqBracket(span)),
+        ',' => Some(Token::Comma(span)),
+        '.' => Some(Token::Period(span)),
+        ':' => Some(Token::Colon(span)),
         _ => None,
     }
 }
 
-fn get_double_char_op(letter: char, pos: FilePos) -> Option<Token> {
+fn get_double_char_op(letter: char, pos: SourceOffset) -> Option<Token> {
+    let span = SourceSpan::new(pos, 2);
     match letter {
-        '=' => Some(Token::Eq(pos)),
-        '>' => Some(Token::GreaterOrEq(pos)),
-        '<' => Some(Token::LessOrEq(pos)),
-        '+' => Some(Token::AddAssign(pos)),
-        '-' => Some(Token::SubAssign(pos)),
-        '*' => Some(Token::MulAssign(pos)),
-        '/' => Some(Token::DivAssign(pos)),
-        '%' => Some(Token::ModAssign(pos)),
+        '=' => Some(Token::Eq(span)),
+        '>' => Some(Token::GreaterOrEq(span)),
+        '<' => Some(Token::LessOrEq(span)),
+        '+' => Some(Token::AddAssign(span)),
+        '-' => Some(Token::SubAssign(span)),
+        '*' => Some(Token::MulAssign(span)),
+        '/' => Some(Token::DivAssign(span)),
+        '%' => Some(Token::ModAssign(span)),
         _ => None,
     }
 }
@@ -81,7 +86,7 @@ pub struct FilePos {
 #[derive(Clone)]
 pub struct LexerResult {
     pub token: Token,
-    pub pos: FilePos,
+    pub pos: SourceOffset,
     pub indent: u32,
 }
 
@@ -91,6 +96,7 @@ pub struct Lexer<'a> {
     line: u32,
     col: u32,
     indent: u32,
+    offset: usize,
 }
 
 impl<'a> Lexer<'a> {
@@ -101,6 +107,7 @@ impl<'a> Lexer<'a> {
             line: 1,
             col: 1,
             indent: 0,
+            offset: 0,
         };
         result.forward();
         result.indent = result.skip_spaces();
@@ -113,12 +120,9 @@ impl<'a> Lexer<'a> {
             self.skip_comments();
         }
 
-        let pos = FilePos {
-            line: self.line,
-            col: self.col - 1,
-        };
+        let pos: SourceOffset = (self.offset - 1).into();
         let result = LexerResult {
-            token: Token::Eof(pos),
+            token: Token::Eof(pos.into()),
             pos,
             indent: self.indent,
         };
@@ -132,7 +136,7 @@ impl<'a> Lexer<'a> {
                 }
             }
             Ok(LexerResult {
-                token: Token::NewLine(pos),
+                token: Token::NewLine(pos.into()),
                 ..result
             })
         } else if let Some(is_char) = self.cur_char {
@@ -150,8 +154,9 @@ impl<'a> Lexer<'a> {
                 })
             // String literals
             } else if is_char == '"' {
+                let value = self.read_str()?;
                 Ok(LexerResult {
-                    token: Token::Str((pos, self.read_str()?)),
+                    token: Token::Str((SourceSpan::new(pos, value.len() + 2), value)),
                     ..result
                 })
             // Not equal operator (special case)
@@ -160,19 +165,14 @@ impl<'a> Lexer<'a> {
                 if self.cur_char == Some('=') {
                     self.forward();
                     Ok(LexerResult {
-                        token: Token::NotEq(pos),
+                        token: Token::NotEq(SourceSpan::new(pos, 2)),
                         ..result
                     })
                 } else {
-                    anyhow::bail!(
-                        "[Ln {}, Col {}] ERROR: Unexpected symbol {:?}",
-                        result.pos.line,
-                        result.pos.col,
-                        is_char
-                    );
+                    anyhow::bail!("[Offset {}] ERROR: Unexpected symbol {:?}", pos.offset(), is_char);
                 }
             // Operators
-            } else if get_single_char_op(is_char, FilePos::default()).is_some() {
+            } else if get_single_char_op(is_char, 0.into()).is_some() {
                 let first = is_char;
                 self.forward();
                 if self.cur_char == Some('=')
@@ -187,16 +187,11 @@ impl<'a> Lexer<'a> {
                     })
                 }
             } else {
-                anyhow::bail!(
-                    "[Ln {}, Col {}] ERROR: Unexpected symbol {:?}",
-                    result.pos.line,
-                    result.pos.col,
-                    is_char
-                );
+                anyhow::bail!("[Offset {}] ERROR: Unexpected symbol {:?}", pos.offset(), is_char);
             }
         } else {
             Ok(LexerResult {
-                token: Token::Eof(pos),
+                token: Token::Eof(pos.into()),
                 ..result
             })
         }
@@ -209,12 +204,13 @@ impl<'a> Lexer<'a> {
         } else {
             self.col += 1;
         }
+        self.offset += 1;
         self.cur_char = self.data.next();
     }
 
     fn is_separator(&self) -> bool {
         if let Some(is_char) = self.cur_char {
-            is_char.is_whitespace() || is_char == '!' || get_single_char_op(is_char, FilePos::default()).is_some()
+            is_char.is_whitespace() || is_char == '!' || get_single_char_op(is_char, 0.into()).is_some()
         } else {
             true
         }
@@ -251,7 +247,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn read_name(&mut self, pos: FilePos) -> anyhow::Result<Token> {
+    fn read_name(&mut self, pos: SourceOffset) -> anyhow::Result<Token> {
         let mut result = String::new();
         while let Some(is_char) = self.cur_char
             && (is_char.is_ascii_alphanumeric() || is_char == '_')
@@ -264,7 +260,7 @@ impl<'a> Lexer<'a> {
             Ok(token)
         } else {
             self.expext_separator()?;
-            Ok(Token::Name((pos, result)))
+            Ok(Token::Name((SourceSpan::new(pos, result.len()), result)))
         }
     }
 
@@ -292,12 +288,14 @@ impl<'a> Lexer<'a> {
             .map_err(|_| anyhow::format_err!("[Ln {}, Col {}] ERROR: Can't parse HEX value", self.line, self.col - 1))
     }
 
-    fn read_number(&mut self, pos: FilePos) -> anyhow::Result<Token> {
+    fn read_number(&mut self, pos: SourceOffset) -> anyhow::Result<Token> {
+        let start = self.offset;
         if self.cur_char == Some('0') {
             self.forward();
             if self.cur_char == Some('x') || self.cur_char == Some('X') {
                 self.forward();
-                return Ok(Token::Int((pos, self.read_hex()?)));
+                let result = self.read_hex()?;
+                return Ok(Token::Int((SourceSpan::new(pos, self.offset - start), result)));
             }
         }
         let integer = self.read_int().0;
@@ -318,15 +316,18 @@ impl<'a> Lexer<'a> {
 
             self.expext_separator()?;
             Ok(Token::Float((
-                pos,
+                SourceSpan::new(pos, self.offset - start),
                 (integer as f64 + decimal.unwrap_or(0.0)) * 10f64.powi(exponent as i32),
             )))
         } else if let Some(dm_part) = decimal {
             self.expext_separator()?;
-            Ok(Token::Float((pos, integer as f64 + dm_part)))
+            Ok(Token::Float((
+                SourceSpan::new(pos, self.offset - start),
+                integer as f64 + dm_part,
+            )))
         } else {
             self.expext_separator()?;
-            Ok(Token::Int((pos, integer)))
+            Ok(Token::Int((SourceSpan::new(pos, self.offset - start), integer)))
         }
     }
 
@@ -374,8 +375,8 @@ impl<'a> Lexer<'a> {
     }
 }
 
-fn print_token(token: Token, pos: FilePos, indent: u32) {
-    println!("{:3} {:3} {:2}  {:?}", pos.line, pos.col, indent, token);
+fn print_token(token: Token, pos: SourceOffset, indent: u32) {
+    println!("{:5} {:2}  {:?}", pos.offset(), indent, token);
 }
 
 #[allow(dead_code)]
@@ -394,10 +395,10 @@ pub fn debug_dump(lexer: &mut Lexer) -> anyhow::Result<()> {
 
         if indent > *indent_stack.front().unwrap() {
             indent_stack.push_front(indent);
-            print_token(Token::Indent(pos), pos, indent);
+            print_token(Token::Indent(SourceSpan::from(pos)), pos, indent);
         } else {
             while indent < *indent_stack.front().unwrap() {
-                print_token(Token::Dedent(pos), pos, indent);
+                print_token(Token::Dedent(SourceSpan::from(pos)), pos, indent);
                 indent_stack.pop_front();
             }
         }
@@ -407,7 +408,7 @@ pub fn debug_dump(lexer: &mut Lexer) -> anyhow::Result<()> {
     while let Some(indent) = indent_stack.pop_front()
         && indent > 0
     {
-        print_token(Token::Dedent(last_pos), last_pos, indent);
+        print_token(Token::Dedent(last_pos), last_pos.offset().into(), indent);
     }
 
     Ok(())

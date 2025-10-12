@@ -5,7 +5,6 @@ use crate::{
     bytecode::FrameAllocator,
     fixedpoint::FixedPoint,
     lexer::{FilePos, Lexer, LexerResult},
-    parser::{Parser, Token},
     semantic::Module,
 };
 
@@ -20,7 +19,9 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
     let source = fs::read_to_string(source_file)?;
 
     let mut lex = Lexer::new(&source);
-    let mut par = Parser::new(FilePos { col: 0, line: 0 });
+    lexer::debug_dump(&mut lex)?;
+    return Ok(vec![]);
+    /*    let mut par = Parser::new(FilePos { col: 0, line: 0 });
 
     let mut indent_stack = VecDeque::new();
     indent_stack.push_front(0u32);
@@ -61,7 +62,7 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
 
     Ok(par.end_of_input()?.0)
     //lexer::debug_dump(&mut lex)?;
-    //Ok(Node::Dummy)
+    //Ok(Node::Dummy)*/
 }
 
 fn collapse_consts(node: &mut ExprNode) {
@@ -93,11 +94,11 @@ fn opt_test(root: &mut Vec<ModNode>) {
 }
 
 fn main() -> anyhow::Result<()> {
-    let mut root = parse_file("test3.txt")?;
+    let mut root = parse_file("test2.txt")?;
     //opt_test(&mut root);
     //ast::debug_dump(&root, "test2_result.txt")?;
-    let mut sem = Module::new();
-    sem.collect_constants(&mut root)?;
+    //let mut sem = Module::new();
+    //sem.collect_constants(&mut root)?;
     /*
     let a = -1.4;
     let b = FixedPoint::from(a);

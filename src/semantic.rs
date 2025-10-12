@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::bail;
+use miette::SourceSpan;
 
 use crate::{
     ast::{BinOp, CodeBlock, DataType, ExprNode, ModNode, ModNodeData, UnOp},
@@ -70,8 +71,8 @@ pub struct Module {
 }
 
 pub enum ResolveResult {
-    Success(Value, bool),  // value, is literal
-    Fail(String, FilePos), // name, pos
+    Success(Value, bool),     // value, is literal
+    Fail(String, SourceSpan), // name, pos
 }
 
 fn get_common_type(
