@@ -242,7 +242,7 @@ impl Module {
                 if let Some(Constant { value, .. }) = self.constants.get(&items[0]) {
                     Ok(ResolveResult::Success(value.clone(), false))
                 } else {
-                    Ok(ResolveResult::Fail(items[0].clone(), node.pos))
+                    Ok(ResolveResult::Fail(items[0].clone(), node.primary_span))
                 }
             }
             crate::ast::ExprNodeData::FnCall { .. } => anyhow::bail!("error {}", line!()),

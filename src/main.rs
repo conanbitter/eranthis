@@ -75,7 +75,8 @@ fn collapse_consts(node: &mut ExprNode) {
             *node = ExprNode {
                 datatype: ast::ExprType::IntLiteral,
                 data: ExprNodeData::IntLiteral(left_part + right_part),
-                pos: node.pos,
+                primary_span: node.primary_span,
+                overall_span: node.overall_span,
             };
         }
     }

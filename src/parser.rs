@@ -6,7 +6,7 @@ pomelo! {
      %include {
         use crate::ast::*;
         use miette::SourceSpan;
-        use crate::lexer::FilePos;
+        use crate::lexer::{FilePos, get_overall_span};
     }
 
     %token #[derive(Clone,Debug)] pub enum Token {};
@@ -108,7 +108,7 @@ pomelo! {
 
     constdecl ::= KwConst(p) single_constdecl(sc) NewLine { ModNode::new(ModNodeData::ConstDecl(vec![sc]), p) };
     constdecl ::= KwConst(p) NewLine Indent constdecl_list(dl) NewLine Dedent { ModNode::new(ModNodeData::ConstDecl(dl), p) };
-    single_constdecl ::= Name(n) basic_type(t) Assign expr(e) { ConstDeclData{ name: n.1, consttype: t.1, value: e, span: n.0} };
+    single_constdecl ::= Name(n) basic_type(t) Assign expr(e) { ConstDeclData{ name: n.1, consttype: t.1, value: e, span: n.0 } };
     constdecl_list ::= constdecl_list(mut dl) NewLine single_constdecl(d) { dl.push(d); dl };
     constdecl_list ::= single_constdecl(d) { vec![d] };
 
@@ -156,40 +156,40 @@ pomelo! {
 
     vardecl ::= KwVar(p) single_vardecl(sv) NewLine { CodeNode::new(CodeNodeData::VarDecl(vec![sv]), p) };
     vardecl ::= KwVar(p) NewLine Indent vardecl_list(dl) NewLine Dedent { CodeNode::new(CodeNodeData::VarDecl(dl), p) };
-    single_vardecl ::= Name(n) basic_type(t) opt_assign?(a) {VarDeclData{ name: n.1, vartype: t.1, init: a, span: n.0 } };
+    single_vardecl ::= Name(n) basic_type(t) opt_assign?(a) { VarDeclData{ name: n.1, vartype: t.1, init: a, span: n.0 } };
     opt_assign ::= Assign expr(e) { e };
     vardecl_list ::= vardecl_list(mut dl) NewLine single_vardecl(d) { dl.push(d); dl };
     vardecl_list ::= single_vardecl(d) { vec![d] };
 
     returnstmt ::= KwReturn(p) expr(e) { CodeNode::new(CodeNodeData::Return(e), p) };
 
-    whilestmt ::= KwWhile(p) expr(e) NewLine block(b) { CodeNode::new(CodeNodeData::While{cond: e, block: b}, p) };
-    whilestmt ::= KwWhile(p) expr(e) KwDo stmt_oneline(so) NewLine { CodeNode::new(CodeNodeData::While{cond: e, block: CodeBlock::new(vec![so])}, p) };
+    whilestmt ::= KwWhile(p) expr(e) NewLine block(b) { CodeNode::new(CodeNodeData::While{ cond: e, block: b}, p) };
+    whilestmt ::= KwWhile(p) expr(e) KwDo stmt_oneline(so) NewLine { CodeNode::new(CodeNodeData::While{ cond: e, block: CodeBlock::new(vec![so]) }, p) };
 
-    expr ::= Int(v)     { ExprNode::new(ExprNodeData::IntLiteral(v.1), v.0) };
-    expr ::= Float(v)   { ExprNode::new(ExprNodeData::FloatLiteral(v.1), v.0) };
-    expr ::= Str(v)     { ExprNode::new(ExprNodeData::StringLiteral(v.1), v.0) };
-    expr ::= boolval(v) { ExprNode::new(ExprNodeData::BoolLiteral(v.1), v.0) };
-    expr ::= var(v)     { ExprNode::new(ExprNodeData::Var(v.1), v.0) };
+    expr ::= Int(v)     { ExprNode::new(ExprNodeData::IntLiteral(v.1), v.0, v.0) };
+    expr ::= Float(v)   { ExprNode::new(ExprNodeData::FloatLiteral(v.1), v.0, v.0) };
+    expr ::= Str(v)     { ExprNode::new(ExprNodeData::StringLiteral(v.1), v.0, v.0) };
+    expr ::= boolval(v) { ExprNode::new(ExprNodeData::BoolLiteral(v.1), v.0, v.0) };
+    expr ::= var(v)     { ExprNode::new(ExprNodeData::Var(v.1), v.0, v.0) };
     expr ::= LParen expr(e) RParen { e };
     expr ::= fncall_expr;
     expr ::= type_convert;
     expr ::= subscript;
-    expr ::= expr(l) Add(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Add,       left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) Sub(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Sub,       left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) Mul(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Mul,       left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) Div(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Div,       left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) Mod(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Mod,       left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) Less(p)        expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Less,      left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) LessOrEq(p)    expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::LessEq,    left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) Greater(p)     expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Greater,   left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) GreaterOrEq(p) expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::GreaterEq, left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) Eq(p)          expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Eq,        left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) NotEq(p)       expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::NotEq,     left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) KwAnd(p)       expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::And,       left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= expr(l) KwOr(p)        expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Or,        left: Box::new(l), right: Box::new(r) }, p) };
-    expr ::= KwNot(p) expr(e)       { ExprNode::new(ExprNodeData::UnOp{ op: UnOp::Not, expr: Box::new(e) }, p) };
-    expr ::= Sub(p) expr(e) [KwNot] { ExprNode::new(ExprNodeData::UnOp{ op: UnOp::Neg, expr: Box::new(e) }, p) };
+    expr ::= expr(l) Add(p)         expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Add,       left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) Sub(p)         expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Sub,       left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) Mul(p)         expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Mul,       left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) Div(p)         expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Div,       left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) Mod(p)         expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Mod,       left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) Less(p)        expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Less,      left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) LessOrEq(p)    expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::LessEq,    left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) Greater(p)     expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Greater,   left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) GreaterOrEq(p) expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::GreaterEq, left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) Eq(p)          expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Eq,        left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) NotEq(p)       expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::NotEq,     left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) KwAnd(p)       expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::And,       left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= expr(l) KwOr(p)        expr(r) { let overall = get_overall_span(l.overall_span, r.overall_span); ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Or,        left: Box::new(l), right: Box::new(r) }, p, overall) };
+    expr ::= KwNot(p) expr(e)       { let overall = get_overall_span(p, e.overall_span); ExprNode::new(ExprNodeData::UnOp{ op: UnOp::Not, expr: Box::new(e) }, p, overall) };
+    expr ::= Sub(p) expr(e) [KwNot] { let overall = get_overall_span(p, e.overall_span); ExprNode::new(ExprNodeData::UnOp{ op: UnOp::Neg, expr: Box::new(e) }, p, overall) };
 
     boolval ::= KwTrue(p)  { (p, true) };
     boolval ::= KwFalse(p) { (p, false) };
@@ -204,16 +204,16 @@ pomelo! {
     var ::= var(mut v) Period Name(n) { v.1.push(n.1); v };
     var ::= Name(n) { (n.0, vec![n.1]) };
 
-    fncall ::= var(v) LParen arg_list(al) RParen { CodeNode::new(CodeNodeData::FnCall{name: v.1, args: al}, v.0)};
-    fncall_expr ::= var(v) LParen arg_list(al) RParen { ExprNode::new(ExprNodeData::FnCall{name: v.1, args: al}, v.0) };
+    fncall ::= var(v) LParen arg_list(al) RParen { CodeNode::new(CodeNodeData::FnCall{ name: v.1, args: al }, v.0) };
+    fncall_expr ::= var(v) LParen arg_list(al) RParen(p) { ExprNode::new(ExprNodeData::FnCall{ name: v.1, args: al }, v.0, get_overall_span(v.0, p)) };
 
     arg_list ::= arg_list(mut al) Comma expr(e) { al.push(e); al };
     arg_list ::= expr(e) { vec![e] };
     arg_list ::= { vec![] };
 
-    type_convert ::= basic_type(t) LParen expr(e) RParen { ExprNode::new(ExprNodeData::TypeConvert{expr: Box::new(e), newtype: t.1}, t.0) };
+    type_convert ::= basic_type(t) LParen expr(e) RParen(p) { ExprNode::new(ExprNodeData::TypeConvert{ expr: Box::new(e), newtype: t.1 }, t.0, get_overall_span(t.0, p)) };
 
-    subscript ::= var(v) LSqBracket expr(e) RSqBracket { ExprNode::new(ExprNodeData::Subscript{name: v.1, index: Box::new(e)}, v.0) };
+    subscript ::= var(v) LSqBracket expr(e) RSqBracket(p) { ExprNode::new(ExprNodeData::Subscript{ name: v.1, index: Box::new(e)}, v.0, get_overall_span(v.0, p)) };
 
     block ::= Indent stmt_list(sl) Dedent { sl };
     block ::= Indent KwPass NewLine Dedent { CodeBlock::new(vec![]) };
@@ -236,6 +236,8 @@ pomelo! {
 
 pub use parser::Parser;
 pub use parser::Token;
+
+use crate::lexer::get_overall_span;
 
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -375,6 +375,11 @@ impl<'a> Lexer<'a> {
     }
 }
 
+pub fn get_overall_span(from: SourceSpan, to: SourceSpan) -> SourceSpan {
+    let length = to.offset() + to.len() - from.offset();
+    SourceSpan::new(from.offset().into(), length)
+}
+
 fn print_token(token: Token, pos: SourceOffset, indent: u32) {
     println!("{:5} {:2}  {:?}", pos.offset(), indent, token);
 }

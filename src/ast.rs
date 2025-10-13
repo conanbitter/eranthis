@@ -48,7 +48,8 @@ pub enum ExprNodeData {
 pub struct ExprNode {
     pub datatype: ExprType,
     pub data: ExprNodeData,
-    pub pos: SourceSpan,
+    pub primary_span: SourceSpan,
+    pub overall_span: SourceSpan,
 }
 
 #[derive(Debug)]
@@ -289,9 +290,14 @@ fn get_expr_type(data: &ExprNodeData) -> ExprType {
 }
 
 impl ExprNode {
-    pub fn new(data: ExprNodeData, pos: SourceSpan) -> ExprNode {
+    pub fn new(data: ExprNodeData, primary_span: SourceSpan, overall_span: SourceSpan) -> ExprNode {
         let datatype = get_expr_type(&data);
-        ExprNode { datatype, data, pos }
+        ExprNode {
+            datatype,
+            data,
+            primary_span,
+            overall_span,
+        }
     }
 }
 
@@ -326,20 +332,33 @@ fn dump_block(block: &CodeBlock, w: &mut BufWriter<File>, indent: String) -> any
 fn dump_expr(node: &ExprNode, w: &mut BufWriter<File>, indent: String) -> anyhow::Result<()> {
     match &node.data {
         ExprNodeData::IntLiteral(v) => {
-            writeln!(w, "{}{:?}({:?}) int {}", indent, node.pos, node.datatype, v)?;
+            writeln!(
+                w,
+                "{}{:?}{:?}({:?}) int {}",
+                indent, node.primary_span, node.overall_span, node.datatype, v
+            )?;
         }
         ExprNodeData::FloatLiteral(v) => {
-            writeln!(w, "{}{:?}({:?}) float {}", indent, node.pos, node.datatype, v)?;
+            writeln!(
+                w,
+                "{}{:?}{:?}({:?}) float {}",
+                indent, node.primary_span, node.overall_span, node.datatype, v
+            )?;
         }
         ExprNodeData::StringLiteral(v) => {
-            writeln!(w, "{}{:?}({:?}) string {:?}", indent, node.pos, node.datatype, v)?;
+            writeln!(
+                w,
+                "{}{:?}{:?}({:?}) string {:?}",
+                indent, node.primary_span, node.overall_span, node.datatype, v
+            )?;
         }
         ExprNodeData::BoolLiteral(v) => {
             writeln!(
                 w,
-                "{}{:?}({:?}) bool {}",
+                "{}{:?}{:?}({:?}) bool {}",
                 indent,
-                node.pos,
+                node.primary_span,
+                node.overall_span,
                 node.datatype,
                 if *v { "true" } else { "false" }
             )?;
@@ -347,9 +366,10 @@ fn dump_expr(node: &ExprNode, w: &mut BufWriter<File>, indent: String) -> anyhow
         ExprNodeData::Var(items) => {
             writeln!(
                 w,
-                "{}{:?}({:?}) var {{ {} }}",
+                "{}{:?}{:?}({:?}) var {{ {} }}",
                 indent,
-                node.pos,
+                node.primary_span,
+                node.overall_span,
                 node.datatype,
                 items.join(" -> ")
             )?;
@@ -357,9 +377,10 @@ fn dump_expr(node: &ExprNode, w: &mut BufWriter<File>, indent: String) -> anyhow
         ExprNodeData::FnCall { name, args } => {
             writeln!(
                 w,
-                "{}{:?}({:?}) func {{ {} }}",
+                "{}{:?}{:?}({:?}) func {{ {} }}",
                 indent,
-                node.pos,
+                node.primary_span,
+                node.overall_span,
                 node.datatype,
                 name.join(" -> ")
             )?;
@@ -371,9 +392,10 @@ fn dump_expr(node: &ExprNode, w: &mut BufWriter<File>, indent: String) -> anyhow
         ExprNodeData::BinOp { op, left, right } => {
             writeln!(
                 w,
-                "{}{:?}({:?}) binop '{}'",
+                "{}{:?}{:?}({:?}) binop '{}'",
                 indent.clone(),
-                node.pos,
+                node.primary_span,
+                node.overall_span,
                 node.datatype,
                 op
             )?;
@@ -385,9 +407,10 @@ fn dump_expr(node: &ExprNode, w: &mut BufWriter<File>, indent: String) -> anyhow
         ExprNodeData::UnOp { op, expr } => {
             writeln!(
                 w,
-                "{}{:?}({:?}) unop '{}':",
+                "{}{:?}{:?}({:?}) unop '{}':",
                 indent.clone(),
-                node.pos,
+                node.primary_span,
+                node.overall_span,
                 node.datatype,
                 op
             )?;
@@ -396,17 +419,18 @@ fn dump_expr(node: &ExprNode, w: &mut BufWriter<File>, indent: String) -> anyhow
         ExprNodeData::TypeConvert { expr, newtype } => {
             writeln!(
                 w,
-                "{}{:?}({:?}) convert to {} from:",
-                indent, node.pos, node.datatype, newtype
+                "{}{:?}{:?}({:?}) convert to {} from:",
+                indent, node.primary_span, node.overall_span, node.datatype, newtype
             )?;
             dump_expr(expr, w, indent.clone() + DEBUG_INDENT)?;
         }
         ExprNodeData::Subscript { name, index } => {
             writeln!(
                 w,
-                "{}{:?}({:?}) array {{{}}} index:",
+                "{}{:?}{:?}({:?}) array {{{}}} index:",
                 indent,
-                node.pos,
+                node.primary_span,
+                node.overall_span,
                 node.datatype,
                 name.join(" -> ")
             )?;
