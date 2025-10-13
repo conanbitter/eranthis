@@ -175,21 +175,21 @@ pomelo! {
     expr ::= fncall_expr;
     expr ::= type_convert;
     expr ::= subscript;
-    expr ::= expr(l) Add(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Add,      Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) Sub(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Sub,      Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) Mul(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Mul,      Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) Div(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Div,      Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) Mod(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Mod,      Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) Less(p)        expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Less,     Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) LessOrEq(p)    expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::LessEq,   Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) Greater(p)     expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Greater,  Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) GreaterOrEq(p) expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::GreaterEq,Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) Eq(p)          expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Eq,       Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) NotEq(p)       expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::NotEq,    Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) KwAnd(p)       expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::And,      Box::new(l), Box::new(r) ), p) };
-    expr ::= expr(l) KwOr(p)        expr(r) { ExprNode::new(ExprNodeData::BinOp( BinOp::Or,       Box::new(l), Box::new(r) ), p) };
-    expr ::= KwNot(p) expr(e)       { ExprNode::new(ExprNodeData::UnOp( UnOp::Not, Box::new(e) ), p) };
-    expr ::= Sub(p) expr(e) [KwNot] { ExprNode::new(ExprNodeData::UnOp( UnOp::Neg, Box::new(e) ), p) };
+    expr ::= expr(l) Add(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Add,       left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) Sub(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Sub,       left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) Mul(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Mul,       left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) Div(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Div,       left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) Mod(p)         expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Mod,       left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) Less(p)        expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Less,      left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) LessOrEq(p)    expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::LessEq,    left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) Greater(p)     expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Greater,   left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) GreaterOrEq(p) expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::GreaterEq, left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) Eq(p)          expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Eq,        left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) NotEq(p)       expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::NotEq,     left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) KwAnd(p)       expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::And,       left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= expr(l) KwOr(p)        expr(r) { ExprNode::new(ExprNodeData::BinOp{ op: BinOp::Or,        left: Box::new(l), right: Box::new(r) }, p) };
+    expr ::= KwNot(p) expr(e)       { ExprNode::new(ExprNodeData::UnOp{ op: UnOp::Not, expr: Box::new(e) }, p) };
+    expr ::= Sub(p) expr(e) [KwNot] { ExprNode::new(ExprNodeData::UnOp{ op: UnOp::Neg, expr: Box::new(e) }, p) };
 
     boolval ::= KwTrue(p)  { (p, true) };
     boolval ::= KwFalse(p) { (p, false) };
@@ -205,15 +205,15 @@ pomelo! {
     var ::= Name(n) { (n.0, vec![n.1]) };
 
     fncall ::= var(v) LParen arg_list(al) RParen { CodeNode::new(CodeNodeData::FnCall(v.1, al), v.0)};
-    fncall_expr ::= var(v) LParen arg_list(al) RParen { ExprNode::new(ExprNodeData::FnCall(v.1, al), v.0) };
+    fncall_expr ::= var(v) LParen arg_list(al) RParen { ExprNode::new(ExprNodeData::FnCall{name: v.1, params: al}, v.0) };
 
     arg_list ::= arg_list(mut al) Comma expr(e) { al.push(e); al };
     arg_list ::= expr(e) { vec![e] };
     arg_list ::= { vec![] };
 
-    type_convert ::= basic_type(t) LParen expr(e) RParen { ExprNode::new(ExprNodeData::TypeConvert(Box::new(e), t.1), t.0) };
+    type_convert ::= basic_type(t) LParen expr(e) RParen { ExprNode::new(ExprNodeData::TypeConvert{expr: Box::new(e), newtype: t.1}, t.0) };
 
-    subscript ::= var(v) LSqBracket expr(e) RSqBracket { ExprNode::new(ExprNodeData::Subscript(v.1, Box::new(e)), v.0) };
+    subscript ::= var(v) LSqBracket expr(e) RSqBracket { ExprNode::new(ExprNodeData::Subscript{name: v.1, index: Box::new(e)}, v.0) };
 
     block ::= Indent stmt_list(sl) Dedent { sl };
     block ::= Indent KwPass NewLine Dedent { CodeBlock::new(vec![]) };

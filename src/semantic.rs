@@ -233,10 +233,8 @@ impl Module {
             crate::ast::ExprNodeData::FloatLiteral(v) => Ok(ResolveResult::Success(Value::Float(*v), true)),
             crate::ast::ExprNodeData::StringLiteral(v) => Ok(ResolveResult::Success(Value::String(v.clone()), true)),
             crate::ast::ExprNodeData::BoolLiteral(v) => Ok(ResolveResult::Success(Value::Bool(*v), true)),
-            crate::ast::ExprNodeData::BinOp(op, expr_left, expr_right) => {
-                self.constexpr_binop(expr_left, expr_right, *op)
-            }
-            crate::ast::ExprNodeData::UnOp(op, expr) => self.constexpr_unop(expr, *op),
+            crate::ast::ExprNodeData::BinOp { op, left, right } => self.constexpr_binop(left, right, *op),
+            crate::ast::ExprNodeData::UnOp { op, expr } => self.constexpr_unop(expr, *op),
             crate::ast::ExprNodeData::Var(items) => {
                 if items.len() > 1 {
                     anyhow::bail!("error {}", line!())
@@ -247,17 +245,17 @@ impl Module {
                     Ok(ResolveResult::Fail(items[0].clone(), node.pos))
                 }
             }
-            crate::ast::ExprNodeData::FnCall(_, _) => anyhow::bail!("error {}", line!()),
-            crate::ast::ExprNodeData::TypeConvert(expr_node, data_type) => {
-                let value = self.constexpr_resolve(expr_node)?;
+            crate::ast::ExprNodeData::FnCall { .. } => anyhow::bail!("error {}", line!()),
+            crate::ast::ExprNodeData::TypeConvert { expr, newtype } => {
+                let value = self.constexpr_resolve(expr)?;
                 match value {
                     ResolveResult::Fail(_, _) => Ok(value),
                     ResolveResult::Success(value, _) => self
-                        .constexpr_typeconvert(value, *data_type)
+                        .constexpr_typeconvert(value, *newtype)
                         .map(|res| ResolveResult::Success(res, false)),
                 }
             }
-            crate::ast::ExprNodeData::Subscript(_, _) => anyhow::bail!("error {}", line!()),
+            crate::ast::ExprNodeData::Subscript { .. } => anyhow::bail!("error {}", line!()),
         }
     }
 

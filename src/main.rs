@@ -66,7 +66,7 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
 }
 
 fn collapse_consts(node: &mut ExprNode) {
-    if let ExprNodeData::BinOp(_, left, right) = &mut node.data {
+    if let ExprNodeData::BinOp { left, right, .. } = &mut node.data {
         collapse_consts(left);
         collapse_consts(right);
         if let ExprNodeData::IntLiteral(left_part) = left.data

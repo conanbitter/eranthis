@@ -1,6 +1,3 @@
-type Name = Vec<String>;
-type ExprBoxed = Box<ExprNode>;
-
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ExprType {
     Unknown,
@@ -23,12 +20,28 @@ pub enum ExprNodeData {
     FloatLiteral(f64),
     StringLiteral(String),
     BoolLiteral(bool),
-    BinOp(BinOp, ExprBoxed, ExprBoxed),
-    UnOp(UnOp, ExprBoxed),
-    Var(Name),
-    FnCall(Name, /*params*/ Vec<ExprNode>),
-    TypeConvert(ExprBoxed, DataType),
-    Subscript(Name, /*index*/ ExprBoxed),
+    BinOp {
+        op: BinOp,
+        left: Box<ExprNode>,
+        right: Box<ExprNode>,
+    },
+    UnOp {
+        op: UnOp,
+        expr: Box<ExprNode>,
+    },
+    Var(Vec<String>),
+    FnCall {
+        name: Vec<String>,
+        params: Vec<ExprNode>,
+    },
+    TypeConvert {
+        expr: Box<ExprNode>,
+        newtype: DataType,
+    },
+    Subscript {
+        name: Vec<String>,
+        index: Box<ExprNode>,
+    },
 }
 
 #[derive(Debug)]
@@ -40,9 +53,9 @@ pub struct ExprNode {
 
 #[derive(Debug)]
 pub enum CodeNodeData {
-    FnCall(Name, /*params*/ Vec<ExprNode>),
-    Assign(Name, ExprNode),
-    OpAssign(Name, BinOp, ExprNode),
+    FnCall(Vec<String>, /*params*/ Vec<ExprNode>),
+    Assign(Vec<String>, ExprNode),
+    OpAssign(Vec<String>, BinOp, ExprNode),
     If(
         /*cond*/ ExprNode,
         /*then*/ CodeBlock,
@@ -50,13 +63,13 @@ pub enum CodeNodeData {
         /*else*/ CodeBlock,
     ),
     For(
-        Name,
+        Vec<String>,
         /*start*/ ExprNode,
         /*stop*/ ExprNode,
         /*step*/ Option<ExprNode>,
         CodeBlock,
     ),
-    ForIn(Name, /*array*/ ExprNode, CodeBlock),
+    ForIn(Vec<String>, /*array*/ ExprNode, CodeBlock),
     VarDecl(Vec<(/*name*/ String, DataType, Option<ExprNode>, SourceSpan)>),
     While(ExprNode, CodeBlock),
     Return(ExprNode),
@@ -184,7 +197,7 @@ fn get_expr_type(data: &ExprNodeData) -> ExprType {
         ExprNodeData::FloatLiteral(_) => ExprType::FloatLiteral,
         ExprNodeData::StringLiteral(_) => ExprType::StringLiteral,
         ExprNodeData::BoolLiteral(_) => ExprType::BoolLiteral,
-        ExprNodeData::BinOp(_, left, right) => {
+        ExprNodeData::BinOp { left, right, .. } => {
             if left.datatype == right.datatype {
                 left.datatype
             } else if left.datatype == ExprType::IntLiteral {
@@ -227,10 +240,10 @@ fn get_expr_type(data: &ExprNodeData) -> ExprType {
                 ExprType::Unknown
             }
         }
-        ExprNodeData::UnOp(_, expr_node) => expr_node.datatype,
+        ExprNodeData::UnOp { expr, .. } => expr.datatype,
         ExprNodeData::Var(_) => ExprType::Unknown,
-        ExprNodeData::FnCall(_, _) => ExprType::Unknown,
-        ExprNodeData::TypeConvert(_, data_type) => match data_type {
+        ExprNodeData::FnCall { .. } => ExprType::Unknown,
+        ExprNodeData::TypeConvert { newtype, .. } => match newtype {
             DataType::Byte => ExprType::Byte,
             DataType::Int => ExprType::Int,
             DataType::Float => ExprType::Float,
@@ -238,7 +251,7 @@ fn get_expr_type(data: &ExprNodeData) -> ExprType {
             DataType::String => ExprType::String,
             DataType::Bool => ExprType::Bool,
         },
-        ExprNodeData::Subscript(_, _) => ExprType::Unknown,
+        ExprNodeData::Subscript { .. } => ExprType::Unknown,
     }
 }
 
@@ -308,54 +321,54 @@ fn dump_expr(node: &ExprNode, w: &mut BufWriter<File>, indent: String) -> anyhow
                 items.join(" -> ")
             )?;
         }
-        ExprNodeData::FnCall(items, params) => {
+        ExprNodeData::FnCall { name, params } => {
             writeln!(
                 w,
                 "{}{:?}({:?}) func {{ {} }}",
                 indent,
                 node.pos,
                 node.datatype,
-                items.join(" -> ")
+                name.join(" -> ")
             )?;
             for (i, node) in params.iter().enumerate() {
                 writeln!(w, "{}param[{}]:", indent.clone(), i)?;
                 dump_expr(node, w, indent.clone() + DEBUG_INDENT)?;
             }
         }
-        ExprNodeData::BinOp(bin_op, node_left, node_right) => {
+        ExprNodeData::BinOp { op, left, right } => {
             writeln!(
                 w,
                 "{}{:?}({:?}) binop '{}'",
                 indent.clone(),
                 node.pos,
                 node.datatype,
-                bin_op
+                op
             )?;
             writeln!(w, "{}left:", indent.clone())?;
-            dump_expr(node_left, w, indent.clone() + DEBUG_INDENT)?;
+            dump_expr(left, w, indent.clone() + DEBUG_INDENT)?;
             writeln!(w, "{}right:", indent.clone())?;
-            dump_expr(node_right, w, indent.clone() + DEBUG_INDENT)?;
+            dump_expr(right, w, indent.clone() + DEBUG_INDENT)?;
         }
-        ExprNodeData::UnOp(un_op, node) => {
+        ExprNodeData::UnOp { op, expr } => {
             writeln!(
                 w,
                 "{}{:?}({:?}) unop '{}':",
                 indent.clone(),
                 node.pos,
                 node.datatype,
-                un_op
-            )?;
-            dump_expr(node, w, indent.clone() + DEBUG_INDENT)?;
-        }
-        ExprNodeData::TypeConvert(expr, data_type) => {
-            writeln!(
-                w,
-                "{}{:?}({:?}) convert to {} from:",
-                indent, node.pos, node.datatype, data_type
+                op
             )?;
             dump_expr(expr, w, indent.clone() + DEBUG_INDENT)?;
         }
-        ExprNodeData::Subscript(name, index) => {
+        ExprNodeData::TypeConvert { expr, newtype } => {
+            writeln!(
+                w,
+                "{}{:?}({:?}) convert to {} from:",
+                indent, node.pos, node.datatype, newtype
+            )?;
+            dump_expr(expr, w, indent.clone() + DEBUG_INDENT)?;
+        }
+        ExprNodeData::Subscript { name, index } => {
             writeln!(
                 w,
                 "{}{:?}({:?}) array {{{}}} index:",
