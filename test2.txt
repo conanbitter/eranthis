@@ -9,8 +9,8 @@ const
     CA int = 2
 
 func test(a int, b fixed) string
-    a = 5
-    b = 3 + 4.3 ;
+    a = 0x5F
+    b = 3 + 4.3
     c = 2 + 3 + 4
     while a>2 do a-=1
     for a in b do print(b)

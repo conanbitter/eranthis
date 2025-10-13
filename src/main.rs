@@ -14,15 +14,14 @@ use crate::{
 
 mod ast;
 mod bytecode;
+mod errors;
 mod fixedpoint;
 mod lexer;
 mod parser;
 mod semantic;
 
-fn parse_file<P: AsRef<Path>>(source_file: P) -> miette::Result<Vec<ModNode>> {
-    let source = fs::read_to_string(source_file).into_diagnostic()?;
-
-    let mut lex = Lexer::new(&source);
+fn parse_string(source: &String) -> miette::Result<Vec<ModNode>> {
+    let mut lex = Lexer::new(source);
     //lexer::debug_dump(&mut lex)?;
     //return Ok(vec![]);
     let mut par = Parser::new(0.into());
@@ -32,7 +31,7 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> miette::Result<Vec<ModNode>> {
     let mut new_line = false;
     let last_pos;
     loop {
-        let LexerResult { token, pos, indent } = lex.next().unwrap();
+        let LexerResult { token, pos, indent } = lex.next()?;
         if let Token::Eof(eofpos) = token {
             last_pos = eofpos;
             break;
@@ -67,6 +66,11 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> miette::Result<Vec<ModNode>> {
     Ok(par.end_of_input().unwrap().0)
     //lexer::debug_dump(&mut lex)?;
     //Ok(Node::Dummy)
+}
+
+fn parse_file<P: AsRef<Path>>(source_file: P) -> miette::Result<Vec<ModNode>> {
+    let source = fs::read_to_string(source_file).into_diagnostic()?;
+    parse_string(&source).map_err(|error| error.with_source_code(source))
 }
 
 fn collapse_consts(node: &mut ExprNode) {

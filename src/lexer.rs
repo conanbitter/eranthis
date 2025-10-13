@@ -2,7 +2,7 @@ use std::{char, collections::VecDeque, str::Chars};
 
 use miette::{SourceOffset, SourceSpan};
 
-use crate::parser::Token;
+use crate::{errors::LexicalError, parser::Token};
 
 fn get_keyword(name: &str, pos: SourceOffset) -> Option<Token> {
     let span = SourceSpan::new(pos, name.len());
@@ -114,7 +114,7 @@ impl<'a> Lexer<'a> {
         result
     }
 
-    pub fn next(&mut self) -> anyhow::Result<LexerResult> {
+    pub fn next(&mut self) -> miette::Result<LexerResult> {
         self.skip_spaces();
         if self.cur_char == Some('#') {
             self.skip_comments();
@@ -169,7 +169,7 @@ impl<'a> Lexer<'a> {
                         ..result
                     })
                 } else {
-                    anyhow::bail!("[Offset {}] ERROR: Unexpected symbol {:?}", pos.offset(), is_char);
+                    miette::bail!(LexicalError::UnexpectedSymbol { symbol: is_char, pos });
                 }
             // Operators
             } else if get_single_char_op(is_char, 0.into()).is_some() {
@@ -187,7 +187,7 @@ impl<'a> Lexer<'a> {
                     })
                 }
             } else {
-                anyhow::bail!("[Offset {}] ERROR: Unexpected symbol {:?}", pos.offset(), is_char);
+                miette::bail!(LexicalError::UnexpectedSymbol { symbol: is_char, pos });
             }
         } else {
             Ok(LexerResult {
@@ -216,13 +216,12 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn expext_separator(&self) -> anyhow::Result<()> {
+    fn expext_separator(&self) -> miette::Result<()> {
         if !self.is_separator() {
-            anyhow::bail!(
-                "[Offset {}] ERROR: Expecting space, operator or end of line before {:?}",
-                self.offset - 1,
-                self.cur_char.unwrap_or(' ')
-            );
+            miette::bail!(LexicalError::ExpectingSeparator {
+                symbol: self.cur_char.unwrap_or(' '),
+                pos: (self.offset - 1).into()
+            });
         }
         Ok(())
     }
@@ -246,7 +245,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn read_name(&mut self, pos: SourceOffset) -> anyhow::Result<Token> {
+    fn read_name(&mut self, pos: SourceOffset) -> miette::Result<Token> {
         let mut result = String::new();
         while let Some(is_char) = self.cur_char
             && (is_char.is_ascii_alphanumeric() || is_char == '_')
@@ -274,7 +273,8 @@ impl<'a> Lexer<'a> {
         (result.parse().unwrap_or(0), result.len())
     }
 
-    fn read_hex(&mut self) -> anyhow::Result<i64> {
+    fn read_hex(&mut self) -> miette::Result<i64> {
+        let start = SourceOffset::from(self.offset - 3);
         let mut result = String::new();
         while let Some(is_char) = self.cur_char
             && is_char.is_ascii_hexdigit()
@@ -282,12 +282,14 @@ impl<'a> Lexer<'a> {
             result.push(is_char);
             self.forward();
         }
-        self.expext_separator()?;
-        i64::from_str_radix(&result, 16)
-            .map_err(|_| anyhow::format_err!("[Ln {}, Col {}] ERROR: Can't parse HEX value", self.line, self.col - 1))
+        self.expext_separator()?; //anyhow::format_err!("[Ln {}, Col {}] ERROR: Can't parse HEX value", self.line, self.col - 1)
+        let result = i64::from_str_radix(&result, 16).map_err(|_| LexicalError::HexParse {
+            pos: SourceSpan::new(start, result.len() + 2),
+        })?;
+        Ok(result)
     }
 
-    fn read_number(&mut self, pos: SourceOffset) -> anyhow::Result<Token> {
+    fn read_number(&mut self, pos: SourceOffset) -> miette::Result<Token> {
         let start = self.offset;
         if self.cur_char == Some('0') {
             self.forward();
@@ -330,7 +332,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn read_str(&mut self) -> anyhow::Result<String> {
+    fn read_str(&mut self) -> miette::Result<String> {
         self.forward();
         let mut escaping = false;
         let mut result = String::new();
@@ -358,18 +360,14 @@ impl<'a> Lexer<'a> {
             && is_char != '\n'
             && is_char != '\r'
         {
-            anyhow::bail!(
-                "[Ln {}, Col {}] ERROR: Unexpected symbol {:?}",
-                self.line,
-                self.col - 1,
-                is_char,
-            );
+            miette::bail!(LexicalError::UnexpectedSymbol {
+                symbol: is_char,
+                pos: (self.offset - 1).into()
+            });
         } else {
-            anyhow::bail!(
-                "[Ln {}, Col {}] ERROR: Unexpected end of string",
-                self.line,
-                self.col - 1
-            );
+            miette::bail!(LexicalError::UnexpectedEos {
+                pos: (self.offset - 1).into()
+            });
         }
     }
 }
@@ -384,7 +382,7 @@ fn print_token(token: Token, pos: SourceOffset, indent: u32) {
 }
 
 #[allow(dead_code)]
-pub fn debug_dump(lexer: &mut Lexer) -> anyhow::Result<()> {
+pub fn debug_dump(lexer: &mut Lexer) -> miette::Result<()> {
     let mut indent_stack = VecDeque::new();
     indent_stack.push_front(0u32);
 
