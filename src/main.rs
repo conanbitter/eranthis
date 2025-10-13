@@ -1,5 +1,8 @@
 use std::{collections::VecDeque, fs, path::Path};
 
+use anyhow::anyhow;
+use miette::IntoDiagnostic;
+
 use crate::{
     ast::{CodeNodeData, ExprNode, ExprNodeData, ModNode, ModNodeData},
     bytecode::FrameAllocator,
@@ -16,8 +19,8 @@ mod lexer;
 mod parser;
 mod semantic;
 
-fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
-    let source = fs::read_to_string(source_file)?;
+fn parse_file<P: AsRef<Path>>(source_file: P) -> miette::Result<Vec<ModNode>> {
+    let source = fs::read_to_string(source_file).into_diagnostic()?;
 
     let mut lex = Lexer::new(&source);
     //lexer::debug_dump(&mut lex)?;
@@ -29,7 +32,7 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
     let mut new_line = false;
     let last_pos;
     loop {
-        let LexerResult { token, pos, indent } = lex.next()?;
+        let LexerResult { token, pos, indent } = lex.next().unwrap();
         if let Token::Eof(eofpos) = token {
             last_pos = eofpos;
             break;
@@ -39,29 +42,29 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
 
         if indent > *indent_stack.front().unwrap() {
             indent_stack.push_front(indent);
-            par.parse(Token::Indent(pos.into()))?;
+            par.parse(Token::Indent(pos.into())).unwrap();
         } else {
             while indent < *indent_stack.front().unwrap() {
-                par.parse(Token::Dedent(pos.into()))?;
+                par.parse(Token::Dedent(pos.into())).unwrap();
                 indent_stack.pop_front();
             }
         }
 
         new_line = matches!(token, Token::NewLine(_));
-        par.parse(token)?;
+        par.parse(token).unwrap();
     }
 
     if !new_line {
-        par.parse(Token::NewLine(last_pos))?;
+        par.parse(Token::NewLine(last_pos)).unwrap();
     }
 
     while let Some(indent) = indent_stack.pop_front()
         && indent > 0
     {
-        par.parse(Token::Dedent(last_pos))?;
+        par.parse(Token::Dedent(last_pos)).unwrap();
     }
 
-    Ok(par.end_of_input()?.0)
+    Ok(par.end_of_input().unwrap().0)
     //lexer::debug_dump(&mut lex)?;
     //Ok(Node::Dummy)
 }
@@ -95,10 +98,10 @@ fn opt_test(root: &mut Vec<ModNode>) {
     }
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> miette::Result<()> {
     let mut root = parse_file("test2.txt")?;
     //opt_test(&mut root);
-    ast::debug_dump(&root, "test2_result.txt")?;
+    ast::debug_dump(&root, "test2_result.txt").unwrap();
     //let mut sem = Module::new();
     //sem.collect_constants(&mut root)?;
     /*

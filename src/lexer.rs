@@ -219,9 +219,8 @@ impl<'a> Lexer<'a> {
     fn expext_separator(&self) -> anyhow::Result<()> {
         if !self.is_separator() {
             anyhow::bail!(
-                "[Ln {}, Col {}] ERROR: Expecting space, operator or end of line before {:?}",
-                self.line,
-                self.col - 1,
+                "[Offset {}] ERROR: Expecting space, operator or end of line before {:?}",
+                self.offset - 1,
                 self.cur_char.unwrap_or(' ')
             );
         }
