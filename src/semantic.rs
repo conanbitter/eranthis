@@ -4,7 +4,7 @@ use anyhow::bail;
 use miette::SourceSpan;
 
 use crate::{
-    ast::{BinOp, CodeBlock, DataType, ExprNode, ModNode, ModNodeData, UnOp},
+    ast::{BinOp, CodeBlock, ConstDeclData, DataType, ExprNode, ModNode, ModNodeData, UnOp},
     fixedpoint::FixedPoint,
     lexer::FilePos,
 };
@@ -186,7 +186,7 @@ impl Module {
                 ..
             } = item
             {
-                for (name, _, value, _) in list {
+                for ConstDeclData { name, value, .. } in list {
                     constants.insert(name.clone(), value);
                 }
             }

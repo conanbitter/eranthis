@@ -83,10 +83,10 @@ fn collapse_consts(node: &mut ExprNode) {
 
 fn opt_test(root: &mut Vec<ModNode>) {
     for ModNode { data: item, .. } in root {
-        if let ModNodeData::FuncDecl(_, _, _, block) = item {
-            for stmt in &mut block.stmts {
-                if let CodeNodeData::Assign(_, expr) = &mut stmt.data {
-                    collapse_consts(expr);
+        if let ModNodeData::FuncDecl { code, .. } = item {
+            for stmt in &mut code.stmts {
+                if let CodeNodeData::Assign { value, .. } = &mut stmt.data {
+                    collapse_consts(value);
                 }
             }
         }
