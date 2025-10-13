@@ -1,43 +1,46 @@
 use std::fmt::Display;
 
-use miette::SourceOffset;
+use miette::SourceSpan;
 use pomelo::pomelo;
 
 pomelo! {
      %include {
         use crate::ast::*;
         use miette::{SourceSpan, SourceOffset};
-        use crate::lexer::{FilePos, get_overall_span};
+        use crate::lexer::get_overall_span;
+        use crate::errors::SyntaxError;
+        use crate::parser::terminal_name;
     }
 
     %token #[derive(Clone,Debug)] pub enum Token {};
     %extra_token SourceSpan;
     %extra_argument SourceOffset;
-    %error anyhow::Error;
+    %error miette::Report;
 
     %syntax_error {
         let expected_list = expected
             .map(|x| if let Some(sometoken) = x.token{
-                    format!(" {}", sometoken)
+                    format!("{}", sometoken)
                 }else{
-                    format!(" {}", x.name)
+                    terminal_name(x.name).to_string()
                 })
             .collect::<Vec<String>>()
             .join(", ");
 
-        if let Some(sometoken) = token{
-            Err(anyhow::anyhow!("[Offset {}] ERROR: got {}, expecting {}", extra.offset(), sometoken, expected_list))
-        }else{
-            Err(anyhow::anyhow!("[Offset {}] ERROR: expecting {}", extra.offset(), expected_list))
+        if let Some(sometoken) = token {
+            let span = sometoken.get_span();
+            miette::bail!(SyntaxError::UnexpectedToken{ token: sometoken, expecting: expected_list, pos: span })
+        } else {
+            miette::bail!(SyntaxError::UnexpectedSomething{ expecting: expected_list, pos: *extra })
         }
     }
 
     %parse_fail {
-        anyhow::anyhow!("[Offset {}] ERROR: total parser fail", extra.offset())
+        miette::miette!(SyntaxError::TotalFail{ pos:*extra })
     }
 
     %stack_overflow {
-        anyhow::anyhow!("[Offset {}] ERROR: parser stack overflow", extra.offset())
+        miette::miette!(SyntaxError::StackOverflow{ pos:*extra })
     }
 
 
@@ -238,8 +241,6 @@ pomelo! {
 pub use parser::Parser;
 pub use parser::Token;
 
-use crate::lexer::get_overall_span;
-
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -305,5 +306,140 @@ impl Display for Token {
             Token::RSqBracket(_) => write!(f, "']'"),
             Token::KwDo(_) => write!(f, "'do'"),
         }
+    }
+}
+
+impl Token {
+    pub fn get_span(&self) -> SourceSpan {
+        match self {
+            Token::Name((span, _)) => *span,
+            Token::Str((span, _)) => *span,
+            Token::Int((span, _)) => *span,
+            Token::Float((span, _)) => *span,
+            Token::Eof(span) => *span,
+            Token::KwOr(span) => *span,
+            Token::KwAnd(span) => *span,
+            Token::Eq(span) => *span,
+            Token::NotEq(span) => *span,
+            Token::Less(span) => *span,
+            Token::LessOrEq(span) => *span,
+            Token::Greater(span) => *span,
+            Token::GreaterOrEq(span) => *span,
+            Token::Add(span) => *span,
+            Token::Sub(span) => *span,
+            Token::Mul(span) => *span,
+            Token::Div(span) => *span,
+            Token::Mod(span) => *span,
+            Token::KwNot(span) => *span,
+            Token::KwVar(span) => *span,
+            Token::NewLine(span) => *span,
+            Token::Indent(span) => *span,
+            Token::Dedent(span) => *span,
+            Token::KwConst(span) => *span,
+            Token::Assign(span) => *span,
+            Token::KwFunc(span) => *span,
+            Token::LParen(span) => *span,
+            Token::RParen(span) => *span,
+            Token::Comma(span) => *span,
+            Token::AddAssign(span) => *span,
+            Token::SubAssign(span) => *span,
+            Token::MulAssign(span) => *span,
+            Token::DivAssign(span) => *span,
+            Token::ModAssign(span) => *span,
+            Token::KwIf(span) => *span,
+            Token::KwThen(span) => *span,
+            Token::KwElse(span) => *span,
+            Token::KwElif(span) => *span,
+            Token::KwFor(span) => *span,
+            Token::KwTo(span) => *span,
+            Token::KwStep(span) => *span,
+            Token::KwIn(span) => *span,
+            Token::KwDo(span) => *span,
+            Token::KwReturn(span) => *span,
+            Token::KwWhile(span) => *span,
+            Token::KwTrue(span) => *span,
+            Token::KwFalse(span) => *span,
+            Token::KwByte(span) => *span,
+            Token::KwInt(span) => *span,
+            Token::KwFloat(span) => *span,
+            Token::KwFixed(span) => *span,
+            Token::KwString(span) => *span,
+            Token::KwBool(span) => *span,
+            Token::Period(span) => *span,
+            Token::LSqBracket(span) => *span,
+            Token::RSqBracket(span) => *span,
+            Token::KwPass(span) => *span,
+            Token::KwRef(span) => *span,
+            Token::KwStruct(span) => *span,
+            Token::KwType(span) => *span,
+            Token::Colon(span) => *span,
+        }
+    }
+}
+
+fn terminal_name(terminal: &'static str) -> &'static str {
+    match terminal {
+        "Name" => "name",
+        "Str" => "string literal",
+        "Int" => "int literal",
+        "Float" => "float literal",
+        "Eof" => "end of file",
+        "KwOr" => "'or'",
+        "KwAnd" => "'and'",
+        "Eq" => "'=='",
+        "NotEq" => "'!='",
+        "Less" => "'<'",
+        "LessOrEq" => "'<='",
+        "Greater" => "'>'",
+        "GreaterOrEq" => "'>='",
+        "Add" => "'+'",
+        "Sub" => "'-'",
+        "Mul" => "'*'",
+        "Div" => "'/'",
+        "Mod" => "'%'",
+        "KwNot" => "'not'",
+        "NewLine" => "new line",
+        "Assign" => "'='",
+        "AddAssign" => "'+='",
+        "SubAssign" => "'-='",
+        "MulAssign" => "'*='",
+        "DivAssign" => "'/='",
+        "ModAssign" => "'%='",
+        "KwIf" => "'if'",
+        "KwThen" => "'then'",
+        "KwElse" => "'else'",
+        "KwElif" => "'elif'",
+        "KwFor" => "'for'",
+        "KwTo" => "'to'",
+        "KwStep" => "'step'",
+        "KwIn" => "'in'",
+        "KwVar" => "'var'",
+        "Indent" => "indent",
+        "Dedent" => "dedent",
+        "KwConst" => "'const'",
+        "LParen" => "'('",
+        "RParen" => "')'",
+        "KwTrue" => "'true'",
+        "KwFalse" => "'false'",
+        "KwByte" => "'byte'",
+        "KwInt" => "'int'",
+        "KwFloat" => "'float'",
+        "KwFixed" => "'fixed'",
+        "KwString" => "'string'",
+        "KwBool" => "'bool'",
+        "Period" => "'.'",
+        "Comma" => "','",
+        "KwPass" => "'pass'",
+        "KwFunc" => "'func'",
+        "KwRef" => "'ref'",
+        "KwReturn" => "'return'",
+        "KwStruct" => "'struct'",
+        "KwType" => "'type'",
+        "KwWhile" => "'while'",
+        "Colon" => "':'",
+        "LSqBracket" => "'['",
+        "RSqBracket" => "']'",
+        "KwDo" => "'do'",
+        _ => "...",
     }
 }

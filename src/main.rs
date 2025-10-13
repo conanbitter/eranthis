@@ -41,29 +41,29 @@ fn parse_string(source: &String) -> miette::Result<Vec<ModNode>> {
 
         if indent > *indent_stack.front().unwrap() {
             indent_stack.push_front(indent);
-            par.parse(Token::Indent(pos.into())).unwrap();
+            par.parse(Token::Indent(pos.into()))?;
         } else {
             while indent < *indent_stack.front().unwrap() {
-                par.parse(Token::Dedent(pos.into())).unwrap();
+                par.parse(Token::Dedent(pos.into()))?;
                 indent_stack.pop_front();
             }
         }
 
         new_line = matches!(token, Token::NewLine(_));
-        par.parse(token).unwrap();
+        par.parse(token)?;
     }
 
     if !new_line {
-        par.parse(Token::NewLine(last_pos)).unwrap();
+        par.parse(Token::NewLine(last_pos))?;
     }
 
     while let Some(indent) = indent_stack.pop_front()
         && indent > 0
     {
-        par.parse(Token::Dedent(last_pos)).unwrap();
+        par.parse(Token::Dedent(last_pos))?;
     }
 
-    Ok(par.end_of_input().unwrap().0)
+    Ok(par.end_of_input()?.0)
     //lexer::debug_dump(&mut lex)?;
     //Ok(Node::Dummy)
 }
