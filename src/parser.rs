@@ -1,17 +1,18 @@
 use std::fmt::Display;
 
+use miette::SourceOffset;
 use pomelo::pomelo;
 
 pomelo! {
      %include {
         use crate::ast::*;
-        use miette::SourceSpan;
+        use miette::{SourceSpan, SourceOffset};
         use crate::lexer::{FilePos, get_overall_span};
     }
 
     %token #[derive(Clone,Debug)] pub enum Token {};
     %extra_token SourceSpan;
-    %extra_argument FilePos;
+    %extra_argument SourceOffset;
     %error anyhow::Error;
 
     %syntax_error {
@@ -25,18 +26,18 @@ pomelo! {
             .join(", ");
 
         if let Some(sometoken) = token{
-            Err(anyhow::anyhow!("[Ln {}, Col {}] ERROR: got {}, expecting {}", extra.line, extra.col, sometoken, expected_list))
+            Err(anyhow::anyhow!("[Offset {}] ERROR: got {}, expecting {}", extra.offset(), sometoken, expected_list))
         }else{
-            Err(anyhow::anyhow!("[Ln {}, Col {}] ERROR: expecting {}", extra.line, extra.col, expected_list))
+            Err(anyhow::anyhow!("[Offset {}] ERROR: expecting {}", extra.offset(), expected_list))
         }
     }
 
     %parse_fail {
-        anyhow::anyhow!("[Ln {}, Col {}] ERROR: total parser fail", extra.line, extra.col)
+        anyhow::anyhow!("[Offset {}] ERROR: total parser fail", extra.offset())
     }
 
     %stack_overflow {
-        anyhow::anyhow!("[Ln {}, Col {}] ERROR: parser stack overflow", extra.line, extra.col)
+        anyhow::anyhow!("[Offset {}] ERROR: parser stack overflow", extra.offset())
     }
 
 

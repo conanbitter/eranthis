@@ -1,7 +1,7 @@
 var b float
 var
     a string
-    b fixed = 4.7
+    b fixed = 4.7+5/3
 
 const A int = 6
 const
@@ -17,7 +17,7 @@ func test(a int, b fixed) string
     for i=1 to 10 step 2 do a+=i
     a += 4%6
     f.t(a[56+d])
-    if a==b then print("a={}",a)
+    if a!=b then print("a={}",a)
     b = true or false
     var a int
     var b float

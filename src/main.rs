@@ -5,6 +5,7 @@ use crate::{
     bytecode::FrameAllocator,
     fixedpoint::FixedPoint,
     lexer::{FilePos, Lexer, LexerResult},
+    parser::{Parser, Token},
     semantic::Module,
 };
 
@@ -19,14 +20,14 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
     let source = fs::read_to_string(source_file)?;
 
     let mut lex = Lexer::new(&source);
-    lexer::debug_dump(&mut lex)?;
-    return Ok(vec![]);
-    /*    let mut par = Parser::new(FilePos { col: 0, line: 0 });
+    //lexer::debug_dump(&mut lex)?;
+    //return Ok(vec![]);
+    let mut par = Parser::new(0.into());
 
     let mut indent_stack = VecDeque::new();
     indent_stack.push_front(0u32);
     let mut new_line = false;
-    let last_pos: FilePos;
+    let last_pos;
     loop {
         let LexerResult { token, pos, indent } = lex.next()?;
         if let Token::Eof(eofpos) = token {
@@ -38,10 +39,10 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
 
         if indent > *indent_stack.front().unwrap() {
             indent_stack.push_front(indent);
-            par.parse(Token::Indent(pos))?;
+            par.parse(Token::Indent(pos.into()))?;
         } else {
             while indent < *indent_stack.front().unwrap() {
-                par.parse(Token::Dedent(pos))?;
+                par.parse(Token::Dedent(pos.into()))?;
                 indent_stack.pop_front();
             }
         }
@@ -62,7 +63,7 @@ fn parse_file<P: AsRef<Path>>(source_file: P) -> anyhow::Result<Vec<ModNode>> {
 
     Ok(par.end_of_input()?.0)
     //lexer::debug_dump(&mut lex)?;
-    //Ok(Node::Dummy)*/
+    //Ok(Node::Dummy)
 }
 
 fn collapse_consts(node: &mut ExprNode) {
@@ -97,7 +98,7 @@ fn opt_test(root: &mut Vec<ModNode>) {
 fn main() -> anyhow::Result<()> {
     let mut root = parse_file("test2.txt")?;
     //opt_test(&mut root);
-    //ast::debug_dump(&root, "test2_result.txt")?;
+    ast::debug_dump(&root, "test2_result.txt")?;
     //let mut sem = Module::new();
     //sem.collect_constants(&mut root)?;
     /*
